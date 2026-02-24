@@ -1,0 +1,14 @@
+[general]
+refresh_rate_ms = 500
+github_repo = "joaopssx/r-heatmap"
+
+[style]
+border_color = "Cyan"
+header_color = "Yellow"
+sensor_label_contains = ["core", "tctl", "tccd", "cpu", "package", "die"]
+
+[thresholds]
+cold = 40.0
+warm = 60.0
+hot = 80.0
+critical = 90.0
