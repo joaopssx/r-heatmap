@@ -10,7 +10,7 @@ chrono = "0.4.44"
 clap = { version = "4.5.60", features = ["derive"] }
 color-eyre = "0.6.5"
 crossterm = "0.29.0"
-fern = { version = "0.7.1", features = ["colored"] }
+fern = "0.7.1"
 log = "0.4.29"
 ratatui = "0.30.0"
 serde = { version = "1.0.228", features = ["derive"] }

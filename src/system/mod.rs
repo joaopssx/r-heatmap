@@ -11,14 +11,19 @@ use sysinfo::{Components, System};
 pub struct SystemStats {
     pub sys: System,
     pub components: Components,
+    pub gpu_enabled: bool,
 }
 
 impl SystemStats {
-    pub fn new() -> Self {
+    pub fn new(gpu_enabled: bool) -> Self {
         let mut sys = System::new_all();
         sys.refresh_all();
         let components = Components::new_with_refreshed_list();
-        Self { sys, components }
+        Self {
+            sys,
+            components,
+            gpu_enabled,
+        }
     }
 
     pub fn refresh(&mut self) {
@@ -40,6 +45,9 @@ impl SystemStats {
     }
 
     pub fn gpu_usage(&self) -> Option<f32> {
+        if !self.gpu_enabled {
+            return None;
+        }
         GpuMonitor::get_usage()
     }
 }

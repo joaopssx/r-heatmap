@@ -60,6 +60,6 @@ impl Default for Config {
     }
 }
 
-pub fn load_config() -> Config {
-    loader::load_from_file("config.toml")
+pub fn load_config(path: Option<&str>) -> Config {
+    loader::load(path)
 }

@@ -3,9 +3,9 @@ use clap::Parser;
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 pub struct Args {
-    /// Path to the configuration file
-    #[arg(short, long, default_value = "config.toml")]
-    pub config: String,
+    /// Path to the configuration file (default: ./config.toml, then ~/.config/r-heatmap/config.toml)
+    #[arg(short, long, value_name = "PATH")]
+    pub config: Option<String>,
 
     /// Log level (info, debug, error)
     #[arg(short, long, default_value = "info")]

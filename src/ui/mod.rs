@@ -4,7 +4,7 @@ pub mod layout;
 pub mod widgets;
 
 use self::layout::grid;
-use self::widgets::{footer, tile};
+use self::widgets::{footer, header, tile};
 use crate::config::Config;
 use crate::system::SystemStats;
 use crate::util::color::{get_usage_color, parse_color};
@@ -34,11 +34,16 @@ pub fn render(f: &mut Frame, stats: &SystemStats, config: &Config) {
 
     let content_chunks = Layout::default()
         .direction(Direction::Vertical)
-        .constraints([Constraint::Length(6), Constraint::Min(0)])
+        .constraints([
+            Constraint::Length(1),
+            Constraint::Length(6),
+            Constraint::Min(0),
+        ])
         .split(main_area);
 
-    render_temperatures(f, content_chunks[0], stats, config);
-    render_core_usage_grid(f, content_chunks[1], stats, config);
+    header::render(f, content_chunks[0], stats, config);
+    render_temperatures(f, content_chunks[1], stats, config);
+    render_core_usage_grid(f, content_chunks[2], stats, config);
     footer::render(f, chunks[1], stats, config);
 }
 
