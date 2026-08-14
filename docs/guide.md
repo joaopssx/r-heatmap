@@ -62,15 +62,26 @@ chip and red once it leaves it; chips that publish no window are drawn blue, sin
 there is no way to tell a healthy 12V rail from a sagging one without it. Desktop
 super-I/O chips expose a lot of rails, laptops usually expose only the battery.
 
+## GPUS
+
+Every `cardN` under `/sys/class/drm/` that exposes `device/gpu_busy_percent` gets its own
+tile, so a hybrid laptop or a multi card box shows all of them instead of whichever came
+first. Cards are labeled by node and driver (`card1 amdgpu`), read from `device/uevent`.
+Connector entries such as `card0-eDP-1` are skipped, and so are cards without the counter:
+`gpu_busy_percent` is an amdgpu interface, so Intel and NVIDIA cards usually report
+nothing here and the row stays hidden. `--no-gpu` skips the scan altogether.
+
 ## ARCHITECTURE
 
-- **System**: Data retrieval via `sysinfo` and `/sys` filesystem. `hwmon` scans a channel
-  prefix (`fan`, `in`) and returns readings that keep their own `_input` path, so a
-  refresh rereads a single file instead of walking the tree again. Adding another
-  channel type is a matter of scanning a new prefix with the right scale factor.
+- **System**: Data retrieval via `sysinfo` and `/sys` filesystem. `sysfs` holds the
+  reading primitive: a label, a value and the path it came from, so a refresh rereads a
+  single file instead of walking the tree again. `hwmon` builds readings by scanning a
+  channel prefix (`fan`, `in`) with a scale factor, `gpu` builds them from the drm nodes.
+  Adding another channel type is a matter of scanning a new prefix.
 - **UI**: Terminal interface built with `ratatui`. Rows are laid out top to bottom
-  (header, temperatures, disks, fans, voltages, cores) and a row with no readings is
-  given zero height.
+  (header, temperatures, disks, fans, voltages, GPUs, cores) and a row with no readings
+  is given zero height. Fans, voltages and GPUs share one grid renderer, parameterized by
+  decimals, unit and color function.
 - **Events**: Crossterm-based event loop. Input is polled with whatever is left of the
   current tick, so keys respond immediately regardless of `refresh_rate_ms`.
 

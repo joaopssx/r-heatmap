@@ -1,4 +1,5 @@
-use crate::system::hwmon::{self, Reading};
+use crate::system::hwmon;
+use crate::system::sysfs::Reading;
 
 pub struct VoltMonitor;
 

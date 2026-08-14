@@ -4,13 +4,14 @@ pub mod fan;
 pub mod gpu;
 pub mod hwmon;
 pub mod memory;
+pub mod sysfs;
 pub mod volt;
 
 pub use cpu::CpuMonitor;
 pub use fan::FanMonitor;
 pub use gpu::GpuMonitor;
-use hwmon::Reading;
 pub use memory::MemoryMonitor;
+use sysfs::Reading;
 use sysinfo::{Components, System};
 pub use volt::VoltMonitor;
 
@@ -19,7 +20,7 @@ pub struct SystemStats {
     pub components: Components,
     pub fans: Vec<Reading>,
     pub volts: Vec<Reading>,
-    pub gpu_enabled: bool,
+    pub gpus: Vec<Reading>,
 }
 
 impl SystemStats {
@@ -27,20 +28,26 @@ impl SystemStats {
         let mut sys = System::new_all();
         sys.refresh_all();
         let components = Components::new_with_refreshed_list();
+
         Self {
             sys,
             components,
             fans: FanMonitor::scan(),
             volts: VoltMonitor::scan(),
-            gpu_enabled,
+            gpus: if gpu_enabled {
+                GpuMonitor::scan()
+            } else {
+                Vec::new()
+            },
         }
     }
 
     pub fn refresh(&mut self) {
         CpuMonitor::refresh(&mut self.sys);
         MemoryMonitor::refresh(&mut self.sys);
-        hwmon::refresh(&mut self.fans);
-        hwmon::refresh(&mut self.volts);
+        sysfs::refresh(&mut self.fans);
+        sysfs::refresh(&mut self.volts);
+        sysfs::refresh(&mut self.gpus);
         self.components.refresh(true);
     }
 
@@ -54,12 +61,5 @@ impl SystemStats {
 
     pub fn mem_usage(&self) -> (u64, u64) {
         MemoryMonitor::get_usage(&self.sys)
-    }
-
-    pub fn gpu_usage(&self) -> Option<f32> {
-        if !self.gpu_enabled {
-            return None;
-        }
-        GpuMonitor::get_usage()
     }
 }

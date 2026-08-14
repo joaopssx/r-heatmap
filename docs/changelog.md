@@ -10,6 +10,7 @@ All notable changes to this project will be documented in this file.
 - Fan speed tiles read from `fanN_input`, colored against `fanN_max`.
 - Voltage tiles read from `inN_input`, colored against the `inN_min`/`inN_max` window.
 - `hwmon` scanner shared by fans and voltages, with per channel scale factor.
+- One tile per GPU reporting `gpu_busy_percent`, labeled by drm node and driver.
 - Config lookup falls back to `~/.config/r-heatmap/config.toml`.
 - `Ctrl+C` quits, since raw mode swallows the signal.
 
@@ -25,6 +26,10 @@ All notable changes to this project will be documented in this file.
   `style.header_color` unused.
 - Tiles take a formatted value and a color, so temperatures, usage, RPM and volts can
   share the same widget.
+- GPU detection lists every card instead of returning the first one found, and no longer
+  reads `/sys` from inside the render loop. The status bar dropped its GPU field, which
+  could only ever show one card.
+- Reading primitive moved from `hwmon` to `sysfs`, now that GPUs use it too.
 
 ## [0.1.0]
 

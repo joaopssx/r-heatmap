@@ -10,7 +10,8 @@ System thermal and load monitoring utility for Linux terminals.
 - Disk temperatures (NVMe and SATA).
 - Fan speeds in RPM.
 - Voltage rails, when the chip exposes them.
-- Per core usage, plus a status bar with global CPU, RAM and GPU usage.
+- Usage of every GPU that reports it, one tile per card.
+- Per core usage, plus a status bar with global CPU and RAM usage.
 
 Rows with nothing to report are hidden instead of showing empty tiles, so a laptop
 without voltage sensors simply does not get a voltage row.
@@ -36,7 +37,7 @@ Press `q` or `Ctrl+C` to quit.
 
 - `-c, --config <PATH>`: Custom configuration file.
 - `-l, --log-level <LEVEL>`: Log verbosity (debug, info, warn, error). Default `info`.
-- `--no-gpu`: Skip GPU data collection.
+- `--no-gpu`: Skip GPU detection entirely, hiding the GPU row.
 
 ## Configuration
 

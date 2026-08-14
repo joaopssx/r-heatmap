@@ -7,7 +7,7 @@ use self::layout::grid;
 use self::widgets::{footer, header, tile};
 use crate::config::Config;
 use crate::system::SystemStats;
-use crate::system::hwmon::Reading;
+use crate::system::sysfs::Reading;
 use crate::util::color::{get_fan_color, get_usage_color, get_volt_color, parse_color};
 use ratatui::{
     Frame,
@@ -38,6 +38,7 @@ pub fn render(f: &mut Frame, stats: &SystemStats, config: &Config) {
     let disks_height = if disks.is_empty() { 0 } else { 5 };
     let fans_height = if stats.fans.is_empty() { 0 } else { 5 };
     let volts_height = if stats.volts.is_empty() { 0 } else { 5 };
+    let gpus_height = if stats.gpus.is_empty() { 0 } else { 5 };
 
     let content_chunks = Layout::default()
         .direction(Direction::Vertical)
@@ -47,6 +48,7 @@ pub fn render(f: &mut Frame, stats: &SystemStats, config: &Config) {
             Constraint::Length(disks_height),
             Constraint::Length(fans_height),
             Constraint::Length(volts_height),
+            Constraint::Length(gpus_height),
             Constraint::Min(0),
         ])
         .split(main_area);
@@ -62,7 +64,10 @@ pub fn render(f: &mut Frame, stats: &SystemStats, config: &Config) {
     render_reading_grid(f, content_chunks[4], &stats.volts, 3, " V", |r| {
         get_volt_color(r.value, r.min, r.max)
     });
-    render_core_usage_grid(f, content_chunks[5], stats, config);
+    render_reading_grid(f, content_chunks[5], &stats.gpus, 0, "%", |r| {
+        get_usage_color(r.value)
+    });
+    render_core_usage_grid(f, content_chunks[6], stats, config);
     footer::render(f, chunks[1], stats, config);
 }
 
