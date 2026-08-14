@@ -7,7 +7,7 @@ pub struct Args {
     #[arg(short, long, value_name = "PATH")]
     pub config: Option<String>,
 
-    /// Log level (info, debug, error)
+    /// Log level (debug, info, warn, error)
     #[arg(short, long, default_value = "info")]
     pub log_level: String,
 
