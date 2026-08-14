@@ -21,6 +21,12 @@ pub struct StyleConfig {
     pub border_color: String,
     pub header_color: String,
     pub sensor_label_contains: Vec<String>,
+    #[serde(default = "default_disk_labels")]
+    pub disk_label_contains: Vec<String>,
+}
+
+fn default_disk_labels() -> Vec<String> {
+    vec!["nvme".to_string(), "drivetemp".to_string()]
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -49,6 +55,7 @@ impl Default for Config {
                     "package".to_string(),
                     "die".to_string(),
                 ],
+                disk_label_contains: default_disk_labels(),
             },
             thresholds: ThresholdsConfig {
                 cold: 40.0,

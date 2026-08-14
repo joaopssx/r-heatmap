@@ -14,6 +14,7 @@ use ratatui::{
     style::{Color, Style},
     widgets::{Block, BorderType, Borders},
 };
+use sysinfo::Component;
 
 pub fn render(f: &mut Frame, stats: &SystemStats, config: &Config) {
     let chunks = Layout::default()
@@ -32,38 +33,46 @@ pub fn render(f: &mut Frame, stats: &SystemStats, config: &Config) {
     let main_area = main_block.inner(chunks[0]);
     f.render_widget(main_block, chunks[0]);
 
+    let disks = collect_sensors(stats, &config.style.disk_label_contains);
+    let disks_height = if disks.is_empty() { 0 } else { 5 };
+
     let content_chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
             Constraint::Length(1),
             Constraint::Length(6),
+            Constraint::Length(disks_height),
             Constraint::Min(0),
         ])
         .split(main_area);
 
+    let sensors = collect_sensors(stats, &config.style.sensor_label_contains);
+
     header::render(f, content_chunks[0], stats, config);
-    render_temperatures(f, content_chunks[1], stats, config);
-    render_core_usage_grid(f, content_chunks[2], stats, config);
+    render_sensor_grid(f, content_chunks[1], &sensors, config);
+    render_sensor_grid(f, content_chunks[2], &disks, config);
+    render_core_usage_grid(f, content_chunks[3], stats, config);
     footer::render(f, chunks[1], stats, config);
 }
 
-fn render_temperatures(f: &mut Frame, area: Rect, stats: &SystemStats, config: &Config) {
+fn collect_sensors<'a>(stats: &'a SystemStats, filters: &[String]) -> Vec<&'a Component> {
     let mut sensors: Vec<_> = stats
         .components
         .iter()
         .filter(|c| {
-            config
-                .style
-                .sensor_label_contains
-                .iter()
-                .any(|s| c.label().to_lowercase().contains(s))
+            let label = c.label().to_lowercase();
+            filters.iter().any(|f| label.contains(f))
         })
         .collect();
 
+    sensors.sort_by_key(|s| s.label());
+    sensors
+}
+
+fn render_sensor_grid(f: &mut Frame, area: Rect, sensors: &[&Component], config: &Config) {
     if sensors.is_empty() {
         return;
     }
-    sensors.sort_by_key(|s| s.label());
 
     let grid_rects = grid::calculate_grid(area, sensors.len());
 

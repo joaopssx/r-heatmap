@@ -23,6 +23,7 @@ The software looks for `config.toml` in the working directory by default.
 - `style.border_color`: Primary UI border color.
 - `style.header_color`: Information text color.
 - `style.sensor_label_contains`: Filter list for hwmon labels.
+- `style.disk_label_contains`: Filter list for disk hwmon labels. Optional, defaults to `["nvme", "drivetemp"]`. The disk row is hidden when nothing matches.
 - `thresholds`: Temperature boundaries for heatmap color mapping.
 
 ## ARCHITECTURE

@@ -35,6 +35,7 @@ github_repo = "joaopssx/r-heatmap"
 border_color = "Cyan"
 header_color = "Yellow"
 sensor_label_contains = ["core", "tctl", "tccd", "cpu", "package", "die"]
+disk_label_contains = ["nvme", "drivetemp"]
 
 [thresholds]
 cold = 40.0
@@ -47,6 +48,13 @@ critical = 90.0
 
 - Rust stable
 - Linux kernel with `hwmon` and `sysfs` support.
+
+NVMe drives report their temperature out of the box. SATA drives need the `drivetemp` module:
+
+```bash
+sudo modprobe drivetemp
+echo drivetemp | sudo tee /etc/modules-load.d/drivetemp.conf
+```
 
 ## License
 
