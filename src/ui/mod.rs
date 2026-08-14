@@ -7,7 +7,8 @@ use self::layout::grid;
 use self::widgets::{footer, header, tile};
 use crate::config::Config;
 use crate::system::SystemStats;
-use crate::util::color::{get_fan_color, get_usage_color, parse_color};
+use crate::system::hwmon::Reading;
+use crate::util::color::{get_fan_color, get_usage_color, get_volt_color, parse_color};
 use ratatui::{
     Frame,
     layout::{Alignment, Constraint, Direction, Layout, Rect},
@@ -36,6 +37,7 @@ pub fn render(f: &mut Frame, stats: &SystemStats, config: &Config) {
     let disks = collect_sensors(stats, &config.style.disk_label_contains);
     let disks_height = if disks.is_empty() { 0 } else { 5 };
     let fans_height = if stats.fans.is_empty() { 0 } else { 5 };
+    let volts_height = if stats.volts.is_empty() { 0 } else { 5 };
 
     let content_chunks = Layout::default()
         .direction(Direction::Vertical)
@@ -44,6 +46,7 @@ pub fn render(f: &mut Frame, stats: &SystemStats, config: &Config) {
             Constraint::Length(6),
             Constraint::Length(disks_height),
             Constraint::Length(fans_height),
+            Constraint::Length(volts_height),
             Constraint::Min(0),
         ])
         .split(main_area);
@@ -53,8 +56,13 @@ pub fn render(f: &mut Frame, stats: &SystemStats, config: &Config) {
     header::render(f, content_chunks[0], stats, config);
     render_sensor_grid(f, content_chunks[1], &sensors, config);
     render_sensor_grid(f, content_chunks[2], &disks, config);
-    render_fan_grid(f, content_chunks[3], stats);
-    render_core_usage_grid(f, content_chunks[4], stats, config);
+    render_reading_grid(f, content_chunks[3], &stats.fans, 0, " RPM", |r| {
+        get_fan_color(r.value, r.max)
+    });
+    render_reading_grid(f, content_chunks[4], &stats.volts, 3, " V", |r| {
+        get_volt_color(r.value, r.min, r.max)
+    });
+    render_core_usage_grid(f, content_chunks[5], stats, config);
     footer::render(f, chunks[1], stats, config);
 }
 
@@ -97,23 +105,32 @@ fn render_sensor_grid(f: &mut Frame, area: Rect, sensors: &[&Component], config:
     }
 }
 
-fn render_fan_grid(f: &mut Frame, area: Rect, stats: &SystemStats) {
-    if stats.fans.is_empty() {
+fn render_reading_grid<F>(
+    f: &mut Frame,
+    area: Rect,
+    readings: &[Reading],
+    decimals: usize,
+    unit: &str,
+    color: F,
+) where
+    F: Fn(&Reading) -> Color,
+{
+    if readings.is_empty() {
         return;
     }
 
-    let grid_rects = grid::calculate_grid(area, stats.fans.len());
+    let grid_rects = grid::calculate_grid(area, readings.len());
 
     let mut idx = 0;
     for row in grid_rects {
         for col_rect in row {
-            if let Some(fan) = stats.fans.get(idx) {
+            if let Some(reading) = readings.get(idx) {
                 tile::render_tile(
                     f,
                     col_rect,
-                    &fan.label,
-                    &format!("{:.0} RPM", fan.value),
-                    get_fan_color(fan.value, fan.max),
+                    &reading.label,
+                    &format!("{:.*}{}", decimals, reading.value, unit),
+                    color(reading),
                 );
                 idx += 1;
             }

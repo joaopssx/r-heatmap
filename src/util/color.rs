@@ -31,6 +31,18 @@ pub fn get_fan_color(rpm: f32, max: Option<f32>) -> Color {
     }
 }
 
+pub fn get_volt_color(volts: f32, min: Option<f32>, max: Option<f32>) -> Color {
+    let out_of_range = min.is_some_and(|min| volts < min) || max.is_some_and(|max| volts > max);
+
+    if out_of_range {
+        Color::Red
+    } else if min.is_some() || max.is_some() {
+        Color::Green
+    } else {
+        Color::Blue
+    }
+}
+
 pub fn get_usage_color(usage: f32) -> Color {
     if usage < 10.0 {
         Color::Rgb(20, 20, 20)

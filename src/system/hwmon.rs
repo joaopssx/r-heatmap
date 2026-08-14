@@ -4,19 +4,27 @@ use std::path::{Path, PathBuf};
 pub struct Reading {
     pub label: String,
     pub value: f32,
+    pub min: Option<f32>,
     pub max: Option<f32>,
     input: PathBuf,
+    scale: f32,
 }
 
 impl Reading {
     pub fn refresh(&mut self) {
         if let Some(value) = read_number(&self.input) {
-            self.value = value;
+            self.value = value * self.scale;
         }
     }
 }
 
-pub fn scan(prefix: &str) -> Vec<Reading> {
+pub fn refresh(readings: &mut [Reading]) {
+    for reading in readings {
+        reading.refresh();
+    }
+}
+
+pub fn scan(prefix: &str, scale: f32) -> Vec<Reading> {
     let mut readings = Vec::new();
 
     let chips = match fs::read_dir("/sys/class/hwmon") {
@@ -58,9 +66,11 @@ pub fn scan(prefix: &str) -> Vec<Reading> {
 
             readings.push(Reading {
                 label,
-                value,
-                max: read_number(&dir.join(format!("{channel}_max"))),
+                value: value * scale,
+                min: read_number(&dir.join(format!("{channel}_min"))).map(|v| v * scale),
+                max: read_number(&dir.join(format!("{channel}_max"))).map(|v| v * scale),
                 input,
+                scale,
             });
         }
     }
