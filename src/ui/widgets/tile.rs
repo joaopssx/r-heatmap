@@ -1,37 +1,29 @@
 use crate::util::color::is_color_light;
 use ratatui::{
     Frame,
-    layout::{Alignment, Constraint, Layout, Rect},
-    style::{Style, Stylize},
+    layout::{Alignment, Constraint, Direction, Layout, Rect},
+    style::{Color, Style, Stylize},
     widgets::{Block, BorderType, Borders, Paragraph},
 };
 
-pub fn render_tile<F>(f: &mut Frame, area: Rect, label: &str, value: f32, unit: &str, color_fn: F)
-where
-    F: Fn(f32) -> ratatui::style::Color,
-{
-    let color = color_fn(value);
-    let border_color = ratatui::style::Color::DarkGray;
-
+pub fn render_tile(f: &mut Frame, area: Rect, label: &str, value: &str, color: Color) {
     let block = Block::default()
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
-        .border_style(Style::default().fg(border_color));
+        .border_style(Style::default().fg(Color::DarkGray));
 
     let inner = block.inner(area);
     f.render_widget(block, area);
     f.render_widget(Block::default().bg(color), inner);
 
     let text_color = if is_color_light(color) {
-        ratatui::style::Color::Black
+        Color::Black
     } else {
-        ratatui::style::Color::White
+        Color::White
     };
 
-    let text = format!("{}\n{:.1}{}", label, value, unit);
-
     let text_chunk = Layout::default()
-        .direction(ratatui::layout::Direction::Vertical)
+        .direction(Direction::Vertical)
         .constraints([
             Constraint::Fill(1),
             Constraint::Length(2),
@@ -40,7 +32,7 @@ where
         .split(inner);
 
     f.render_widget(
-        Paragraph::new(text)
+        Paragraph::new(format!("{}\n{}", label, value))
             .alignment(Alignment::Center)
             .style(Style::default().fg(text_color).bold()),
         text_chunk[1],

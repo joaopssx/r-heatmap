@@ -7,7 +7,7 @@ use self::layout::grid;
 use self::widgets::{footer, header, tile};
 use crate::config::Config;
 use crate::system::SystemStats;
-use crate::util::color::{get_usage_color, parse_color};
+use crate::util::color::{get_fan_color, get_usage_color, parse_color};
 use ratatui::{
     Frame,
     layout::{Alignment, Constraint, Direction, Layout, Rect},
@@ -35,6 +35,7 @@ pub fn render(f: &mut Frame, stats: &SystemStats, config: &Config) {
 
     let disks = collect_sensors(stats, &config.style.disk_label_contains);
     let disks_height = if disks.is_empty() { 0 } else { 5 };
+    let fans_height = if stats.fans.is_empty() { 0 } else { 5 };
 
     let content_chunks = Layout::default()
         .direction(Direction::Vertical)
@@ -42,6 +43,7 @@ pub fn render(f: &mut Frame, stats: &SystemStats, config: &Config) {
             Constraint::Length(1),
             Constraint::Length(6),
             Constraint::Length(disks_height),
+            Constraint::Length(fans_height),
             Constraint::Min(0),
         ])
         .split(main_area);
@@ -51,7 +53,8 @@ pub fn render(f: &mut Frame, stats: &SystemStats, config: &Config) {
     header::render(f, content_chunks[0], stats, config);
     render_sensor_grid(f, content_chunks[1], &sensors, config);
     render_sensor_grid(f, content_chunks[2], &disks, config);
-    render_core_usage_grid(f, content_chunks[3], stats, config);
+    render_fan_grid(f, content_chunks[3], stats);
+    render_core_usage_grid(f, content_chunks[4], stats, config);
     footer::render(f, chunks[1], stats, config);
 }
 
@@ -80,13 +83,37 @@ fn render_sensor_grid(f: &mut Frame, area: Rect, sensors: &[&Component], config:
     for row in grid_rects {
         for col_rect in row {
             if let Some(s) = sensors.get(idx) {
+                let temp = s.temperature().unwrap_or(0.0);
                 tile::render_tile(
                     f,
                     col_rect,
                     s.label(),
-                    s.temperature().unwrap_or(0.0),
-                    "°C",
-                    |v| get_temp_level_color(v, config),
+                    &format!("{:.1}°C", temp),
+                    get_temp_level_color(temp, config),
+                );
+                idx += 1;
+            }
+        }
+    }
+}
+
+fn render_fan_grid(f: &mut Frame, area: Rect, stats: &SystemStats) {
+    if stats.fans.is_empty() {
+        return;
+    }
+
+    let grid_rects = grid::calculate_grid(area, stats.fans.len());
+
+    let mut idx = 0;
+    for row in grid_rects {
+        for col_rect in row {
+            if let Some(fan) = stats.fans.get(idx) {
+                tile::render_tile(
+                    f,
+                    col_rect,
+                    &fan.label,
+                    &format!("{:.0} RPM", fan.value),
+                    get_fan_color(fan.value, fan.max),
                 );
                 idx += 1;
             }
@@ -109,7 +136,13 @@ fn render_core_usage_grid(f: &mut Frame, area: Rect, stats: &SystemStats, _confi
             if idx < count {
                 let usage = usages[idx];
                 let label = format!("Core {}", idx);
-                tile::render_tile(f, col_rect, &label, usage, "%", |v| get_usage_color(v));
+                tile::render_tile(
+                    f,
+                    col_rect,
+                    &label,
+                    &format!("{:.1}%", usage),
+                    get_usage_color(usage),
+                );
                 idx += 1;
             }
         }

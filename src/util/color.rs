@@ -20,6 +20,17 @@ pub fn is_color_light(color: Color) -> bool {
     }
 }
 
+pub fn get_fan_color(rpm: f32, max: Option<f32>) -> Color {
+    if rpm <= 0.0 {
+        return Color::Red;
+    }
+
+    match max {
+        Some(max) if max > 0.0 => get_usage_color(rpm / max * 100.0),
+        _ => Color::Blue,
+    }
+}
+
 pub fn get_usage_color(usage: f32) -> Color {
     if usage < 10.0 {
         Color::Rgb(20, 20, 20)

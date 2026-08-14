@@ -1,16 +1,21 @@
 // Core system monitoring logic - by joaopssx
 pub mod cpu;
+pub mod fan;
 pub mod gpu;
+pub mod hwmon;
 pub mod memory;
 
 pub use cpu::CpuMonitor;
+pub use fan::FanMonitor;
 pub use gpu::GpuMonitor;
+use hwmon::Reading;
 pub use memory::MemoryMonitor;
 use sysinfo::{Components, System};
 
 pub struct SystemStats {
     pub sys: System,
     pub components: Components,
+    pub fans: Vec<Reading>,
     pub gpu_enabled: bool,
 }
 
@@ -22,6 +27,7 @@ impl SystemStats {
         Self {
             sys,
             components,
+            fans: FanMonitor::scan(),
             gpu_enabled,
         }
     }
@@ -29,6 +35,7 @@ impl SystemStats {
     pub fn refresh(&mut self) {
         CpuMonitor::refresh(&mut self.sys);
         MemoryMonitor::refresh(&mut self.sys);
+        FanMonitor::refresh(&mut self.fans);
         self.components.refresh(true);
     }
 
