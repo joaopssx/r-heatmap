@@ -14,10 +14,10 @@ pub fn parse_color(color: &str) -> Color {
 }
 
 pub fn is_color_light(color: Color) -> bool {
-    match color {
-        Color::Cyan | Color::Yellow | Color::Green | Color::White => true,
-        _ => false,
-    }
+    matches!(
+        color,
+        Color::Cyan | Color::Yellow | Color::Green | Color::White
+    )
 }
 
 pub fn get_fan_color(rpm: f32, max: Option<f32>) -> Color {

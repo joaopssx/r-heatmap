@@ -1,6 +1,6 @@
 # r-heatmap
 
-System thermal and load monitoring utility for Linux terminals.
+System thermal and load monitoring utility for Linux and Windows terminals.
 
 **Developed by: joaopssx**
 
@@ -14,7 +14,8 @@ System thermal and load monitoring utility for Linux terminals.
 - Per core usage, plus a status bar with global CPU and RAM usage.
 
 Rows with nothing to report are hidden instead of showing empty tiles, so a laptop
-without voltage sensors simply does not get a voltage row.
+without voltage sensors simply does not get a voltage row. Which rows you get depends on
+the system: see [Requirements](#requirements).
 
 ## Installation
 
@@ -22,8 +23,8 @@ without voltage sensors simply does not get a voltage row.
 cargo install --path .
 ```
 
-The trailing dot is required. The binary lands in `~/.cargo/bin`, which needs to be
-on your `PATH`.
+The trailing dot is required. The binary lands in `~/.cargo/bin` (`%USERPROFILE%\.cargo\bin`
+on Windows), which needs to be on your `PATH`.
 
 ## Usage
 
@@ -42,9 +43,9 @@ Press `q` or `Ctrl+C` to quit.
 ## Configuration
 
 Without `-c`, the config is looked up in `./config.toml` first, then in
-`~/.config/r-heatmap/config.toml` (or `$XDG_CONFIG_HOME/r-heatmap/config.toml`). A
-missing or invalid file is not fatal: the built-in defaults are used and the reason
-goes to the log.
+`~/.config/r-heatmap/config.toml` (or `$XDG_CONFIG_HOME/r-heatmap/config.toml`) on Linux
+and in `%APPDATA%\r-heatmap\config.toml` on Windows. A missing or invalid file is not
+fatal: the built-in defaults are used and the reason goes to the log.
 
 ```toml
 [general]
@@ -54,7 +55,7 @@ github_repo = "joaopssx/r-heatmap"
 [style]
 border_color = "Cyan"
 header_color = "Yellow"
-sensor_label_contains = ["core", "tctl", "tccd", "cpu", "package", "die"]
+sensor_label_contains = ["core", "tctl", "tccd", "cpu", "package", "die", "computer"]
 disk_label_contains = ["nvme", "drivetemp"]
 
 [thresholds]
@@ -74,8 +75,11 @@ missing.
 
 ## Requirements
 
-- Rust stable
-- Linux kernel with `hwmon` and `sysfs` support.
+Rust stable, plus one of:
+
+### Linux
+
+A kernel with `hwmon` and `sysfs` support, which is everything but an embedded build.
 
 NVMe drives report their temperature out of the box. SATA drives need the `drivetemp`
 module:
@@ -84,6 +88,32 @@ module:
 sudo modprobe drivetemp
 echo drivetemp | sudo tee /etc/modules-load.d/drivetemp.conf
 ```
+
+### Windows
+
+Windows 10 or 11. Nothing to install, no elevation.
+
+Working: CPU usage, per core usage and RAM, from the same `sysinfo` calls used on Linux.
+Disk temperatures, read off every physical drive with `IOCTL_STORAGE_QUERY_PROPERTY`,
+which covers NVMe and SATA. GPU usage, from the same performance counters Task Manager
+reads, one tile per hardware adapter and named after it.
+
+Not working, and not fixable from user mode: CPU temperature, fan speeds and voltages.
+On Linux those come from `k10temp`, `nct6775` and friends — kernel modules that talk to
+the CPU's internal registers and to the super-I/O chip on the board. Windows ships no
+equivalent driver, so every tool that shows those numbers (HWiNFO, LibreHardwareMonitor,
+the vendor utilities) installs a signed kernel driver of its own. This one does not, so
+the three rows stay hidden.
+
+The one exception Windows does expose is the ACPI thermal zone, which `sysinfo` reads
+over WMI and which shows up as a single `Computer` sensor. Most desktop boards do not
+implement it. Check yours:
+
+```powershell
+Get-CimInstance -Namespace root/WMI -ClassName MSAcpi_ThermalZoneTemperature
+```
+
+`Sem suporte` / `Not supported` means the temperature row stays empty.
 
 ## License
 

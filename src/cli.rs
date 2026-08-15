@@ -3,7 +3,7 @@ use clap::Parser;
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 pub struct Args {
-    /// Path to the configuration file (default: ./config.toml, then ~/.config/r-heatmap/config.toml)
+    /// Path to the configuration file (default: ./config.toml, then the user config directory)
     #[arg(short, long, value_name = "PATH")]
     pub config: Option<String>,
 

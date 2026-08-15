@@ -54,6 +54,7 @@ impl Default for Config {
                     "cpu".to_string(),
                     "package".to_string(),
                     "die".to_string(),
+                    "computer".to_string(),
                 ],
                 disk_label_contains: default_disk_labels(),
             },

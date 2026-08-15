@@ -26,6 +26,7 @@ fn main() -> Result<()> {
 
     let config = config::load_config(args.config.as_deref());
 
+    util::console::use_utf8();
     enable_raw_mode()?;
     let mut stdout = io::stdout();
     execute!(stdout, EnterAlternateScreen)?;

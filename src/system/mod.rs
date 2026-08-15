@@ -1,23 +1,33 @@
 // Core system monitoring logic - by joaopssx
 pub mod cpu;
+pub mod disk;
+#[cfg(unix)]
+pub mod drm;
 pub mod fan;
 pub mod gpu;
+#[cfg(unix)]
 pub mod hwmon;
 pub mod memory;
+pub mod reading;
+#[cfg(unix)]
 pub mod sysfs;
 pub mod volt;
+#[cfg(windows)]
+pub mod windows;
 
 pub use cpu::CpuMonitor;
+pub use disk::DiskMonitor;
 pub use fan::FanMonitor;
 pub use gpu::GpuMonitor;
 pub use memory::MemoryMonitor;
-use sysfs::Reading;
+pub use reading::Reading;
 use sysinfo::{Components, System};
 pub use volt::VoltMonitor;
 
 pub struct SystemStats {
     pub sys: System,
     pub components: Components,
+    pub disks: Vec<Reading>,
     pub fans: Vec<Reading>,
     pub volts: Vec<Reading>,
     pub gpus: Vec<Reading>,
@@ -32,6 +42,7 @@ impl SystemStats {
         Self {
             sys,
             components,
+            disks: DiskMonitor::scan(),
             fans: FanMonitor::scan(),
             volts: VoltMonitor::scan(),
             gpus: if gpu_enabled {
@@ -45,9 +56,10 @@ impl SystemStats {
     pub fn refresh(&mut self) {
         CpuMonitor::refresh(&mut self.sys);
         MemoryMonitor::refresh(&mut self.sys);
-        sysfs::refresh(&mut self.fans);
-        sysfs::refresh(&mut self.volts);
-        sysfs::refresh(&mut self.gpus);
+        DiskMonitor::refresh(&mut self.disks);
+        FanMonitor::refresh(&mut self.fans);
+        VoltMonitor::refresh(&mut self.volts);
+        GpuMonitor::refresh(&mut self.gpus);
         self.components.refresh(true);
     }
 

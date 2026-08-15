@@ -5,7 +5,7 @@ github_repo = "joaopssx/r-heatmap"
 [style]
 border_color = "Cyan"
 header_color = "Yellow"
-sensor_label_contains = ["core", "tctl", "tccd", "cpu", "package", "die"]
+sensor_label_contains = ["core", "tctl", "tccd", "cpu", "package", "die", "computer"]
 disk_label_contains = ["nvme", "drivetemp"]
 
 [thresholds]

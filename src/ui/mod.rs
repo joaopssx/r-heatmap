@@ -6,8 +6,8 @@ pub mod widgets;
 use self::layout::grid;
 use self::widgets::{footer, header, tile};
 use crate::config::Config;
+use crate::system::Reading;
 use crate::system::SystemStats;
-use crate::system::sysfs::Reading;
 use crate::util::color::{get_fan_color, get_usage_color, get_volt_color, parse_color};
 use ratatui::{
     Frame,
@@ -34,30 +34,27 @@ pub fn render(f: &mut Frame, stats: &SystemStats, config: &Config) {
     let main_area = main_block.inner(chunks[0]);
     f.render_widget(main_block, chunks[0]);
 
-    let disks = collect_sensors(stats, &config.style.disk_label_contains);
-    let disks_height = if disks.is_empty() { 0 } else { 5 };
-    let fans_height = if stats.fans.is_empty() { 0 } else { 5 };
-    let volts_height = if stats.volts.is_empty() { 0 } else { 5 };
-    let gpus_height = if stats.gpus.is_empty() { 0 } else { 5 };
+    let sensors = collect_sensors(stats, &config.style.sensor_label_contains);
+    let disks = collect_disks(stats, &config.style.disk_label_contains);
 
     let content_chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
             Constraint::Length(1),
-            Constraint::Length(6),
-            Constraint::Length(disks_height),
-            Constraint::Length(fans_height),
-            Constraint::Length(volts_height),
-            Constraint::Length(gpus_height),
+            Constraint::Length(row_height(sensors.len(), 6)),
+            Constraint::Length(row_height(disks.len(), 5)),
+            Constraint::Length(row_height(stats.fans.len(), 5)),
+            Constraint::Length(row_height(stats.volts.len(), 5)),
+            Constraint::Length(row_height(stats.gpus.len(), 5)),
             Constraint::Min(0),
         ])
         .split(main_area);
 
-    let sensors = collect_sensors(stats, &config.style.sensor_label_contains);
-
     header::render(f, content_chunks[0], stats, config);
     render_sensor_grid(f, content_chunks[1], &sensors, config);
-    render_sensor_grid(f, content_chunks[2], &disks, config);
+    render_reading_grid(f, content_chunks[2], &disks, 1, "°C", |r| {
+        get_temp_level_color(r.value, config)
+    });
     render_reading_grid(f, content_chunks[3], &stats.fans, 0, " RPM", |r| {
         get_fan_color(r.value, r.max)
     });
@@ -69,6 +66,25 @@ pub fn render(f: &mut Frame, stats: &SystemStats, config: &Config) {
     });
     render_core_usage_grid(f, content_chunks[6], stats, config);
     footer::render(f, chunks[1], stats, config);
+}
+
+fn row_height(count: usize, height: u16) -> u16 {
+    if count == 0 { 0 } else { height }
+}
+
+fn collect_disks(stats: &SystemStats, filters: &[String]) -> Vec<Reading> {
+    let mut disks: Vec<Reading> = collect_sensors(stats, filters)
+        .iter()
+        .map(|sensor| {
+            Reading::new(
+                sensor.label().to_string(),
+                sensor.temperature().unwrap_or(0.0),
+            )
+        })
+        .collect();
+
+    disks.extend(stats.disks.iter().cloned());
+    disks
 }
 
 fn collect_sensors<'a>(stats: &'a SystemStats, filters: &[String]) -> Vec<&'a Component> {

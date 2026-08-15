@@ -18,12 +18,20 @@ fn default_path() -> Option<PathBuf> {
         return Some(local);
     }
 
-    let base = match std::env::var_os("XDG_CONFIG_HOME") {
-        Some(dir) => PathBuf::from(dir),
-        None => PathBuf::from(std::env::var_os("HOME")?).join(".config"),
-    };
+    Some(config_home()?.join("r-heatmap").join("config.toml"))
+}
 
-    Some(base.join("r-heatmap").join("config.toml"))
+#[cfg(windows)]
+fn config_home() -> Option<PathBuf> {
+    std::env::var_os("APPDATA").map(PathBuf::from)
+}
+
+#[cfg(not(windows))]
+fn config_home() -> Option<PathBuf> {
+    match std::env::var_os("XDG_CONFIG_HOME") {
+        Some(dir) => Some(PathBuf::from(dir)),
+        None => Some(PathBuf::from(std::env::var_os("HOME")?).join(".config")),
+    }
 }
 
 fn read_or_default(path: &Path) -> Config {

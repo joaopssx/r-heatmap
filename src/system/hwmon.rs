@@ -1,14 +1,19 @@
-use crate::system::sysfs::{self, Reading};
+use crate::system::reading::Reading;
+use crate::system::sysfs;
 use std::fs;
 use std::path::{Path, PathBuf};
 
 pub fn scan(prefix: &str, scale: f32) -> Vec<Reading> {
     let mut readings = Vec::new();
 
-    let chips = match fs::read_dir("/sys/class/hwmon") {
+    let Some(root) = sysfs::class_dir("hwmon") else {
+        return readings;
+    };
+
+    let chips = match fs::read_dir(&root) {
         Ok(chips) => chips,
         Err(e) => {
-            log::warn!("Could not read /sys/class/hwmon: {}", e);
+            log::warn!("Could not read {}: {}", root.display(), e);
             return readings;
         }
     };
@@ -38,7 +43,7 @@ pub fn scan(prefix: &str, scale: f32) -> Vec<Reading> {
                 _ => format!("{name} {channel}"),
             };
 
-            let Some(mut reading) = Reading::new(label, input, scale) else {
+            let Some(mut reading) = Reading::from_file(label, input, scale) else {
                 continue;
             };
 

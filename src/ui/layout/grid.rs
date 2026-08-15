@@ -10,7 +10,7 @@ pub fn calculate_grid(area: Rect, count: usize) -> Vec<Vec<Rect>> {
 
     let row_chunks = Layout::default()
         .direction(Direction::Vertical)
-        .constraints(vec![Constraint::Percentage(100 / rows); rows as usize])
+        .constraints(vec![Constraint::Fill(1); rows as usize])
         .split(area);
 
     row_chunks
@@ -18,7 +18,7 @@ pub fn calculate_grid(area: Rect, count: usize) -> Vec<Vec<Rect>> {
         .map(|row_rect| {
             Layout::default()
                 .direction(Direction::Horizontal)
-                .constraints(vec![Constraint::Percentage(100 / cols); cols as usize])
+                .constraints(vec![Constraint::Fill(1); cols as usize])
                 .split(*row_rect)
                 .to_vec()
         })
