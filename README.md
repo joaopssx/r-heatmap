@@ -6,6 +6,7 @@ System thermal and load monitoring utility for Linux and Windows terminals.
 
 ## What it shows
 
+- RAM and swap pressure, read from `/proc/meminfo` on Linux.
 - CPU package and core temperatures, colored by threshold.
 - Disk temperatures (NVMe and SATA).
 - Fan speeds in RPM.

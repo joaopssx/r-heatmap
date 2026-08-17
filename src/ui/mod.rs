@@ -44,6 +44,7 @@ pub fn render(f: &mut Frame, stats: &SystemStats, config: &Config) {
         .direction(Direction::Vertical)
         .constraints([
             Constraint::Length(1),
+            Constraint::Length(row_height(stats.memory.len(), 5)),
             Constraint::Length(row_height(sensors.len(), 6)),
             Constraint::Length(row_height(disks.len(), 5)),
             Constraint::Length(row_height(stats.fans.len(), 5)),
@@ -56,26 +57,29 @@ pub fn render(f: &mut Frame, stats: &SystemStats, config: &Config) {
         .split(main_area);
 
     header::render(f, content_chunks[0], stats, config);
-    render_sensor_grid(f, content_chunks[1], &sensors, config);
-    render_reading_grid(f, content_chunks[2], &disks, 1, "°C", |r| {
-        get_temp_level_color(r.value, config)
-    });
-    render_reading_grid(f, content_chunks[3], &stats.fans, 0, " RPM", |r| {
-        get_fan_color(r.value, r.max)
-    });
-    render_reading_grid(f, content_chunks[4], &stats.volts, 3, " V", |r| {
-        get_volt_color(r.value, r.min, r.max)
-    });
-    render_reading_grid(f, content_chunks[5], &stats.gpus, 0, "%", |r| {
+    render_reading_grid(f, content_chunks[1], &stats.memory, 1, "%", |r| {
         get_usage_color(r.value)
     });
-    render_reading_grid(f, content_chunks[6], &stats.gpu_temps, 1, "°C", |r| {
+    render_sensor_grid(f, content_chunks[2], &sensors, config);
+    render_reading_grid(f, content_chunks[3], &disks, 1, "°C", |r| {
         get_temp_level_color(r.value, config)
     });
-    render_reading_grid(f, content_chunks[7], &stats.gpu_clocks, 0, " MHz", |r| {
+    render_reading_grid(f, content_chunks[4], &stats.fans, 0, " RPM", |r| {
+        get_fan_color(r.value, r.max)
+    });
+    render_reading_grid(f, content_chunks[5], &stats.volts, 3, " V", |r| {
+        get_volt_color(r.value, r.min, r.max)
+    });
+    render_reading_grid(f, content_chunks[6], &stats.gpus, 0, "%", |r| {
+        get_usage_color(r.value)
+    });
+    render_reading_grid(f, content_chunks[7], &stats.gpu_temps, 1, "°C", |r| {
+        get_temp_level_color(r.value, config)
+    });
+    render_reading_grid(f, content_chunks[8], &stats.gpu_clocks, 0, " MHz", |r| {
         get_clock_color(r.value, r.max)
     });
-    render_core_usage_grid(f, content_chunks[8], stats, config);
+    render_core_usage_grid(f, content_chunks[9], stats, config);
     footer::render(f, chunks[1], stats, config);
 }
 

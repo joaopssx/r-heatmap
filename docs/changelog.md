@@ -11,6 +11,9 @@ All notable changes to this project will be documented in this file.
 - Voltage tiles read from `inN_input`, colored against the `inN_min`/`inN_max` window.
 - `hwmon` scanner shared by fans and voltages, with per channel scale factor.
 - One tile per GPU reporting `gpu_busy_percent`, labeled by drm node and driver.
+- Memory row with RAM and swap pressure, parsed from `/proc/meminfo`. RAM is measured
+  against `MemAvailable`, not `MemFree`, so the page cache does not read as used memory.
+  The swap tile is dropped on machines with no swap.
 - GPU temperature and clock rows on Linux, read from the hwmon chip `amdgpu` hangs off
   each card. Channels are labeled by card, so a hybrid laptop does not mix the discrete
   card with the integrated one. Clocks are colored against the top DPM state published in

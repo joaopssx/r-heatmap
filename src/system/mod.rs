@@ -7,6 +7,8 @@ pub mod fan;
 pub mod gpu;
 #[cfg(unix)]
 pub mod hwmon;
+#[cfg(unix)]
+pub mod meminfo;
 pub mod memory;
 pub mod reading;
 #[cfg(unix)]
@@ -27,6 +29,7 @@ pub use volt::VoltMonitor;
 pub struct SystemStats {
     pub sys: System,
     pub components: Components,
+    pub memory: Vec<Reading>,
     pub disks: Vec<Reading>,
     pub fans: Vec<Reading>,
     pub volts: Vec<Reading>,
@@ -44,6 +47,7 @@ impl SystemStats {
         Self {
             sys,
             components,
+            memory: MemoryMonitor::scan(),
             disks: DiskMonitor::scan(),
             fans: FanMonitor::scan(),
             volts: VoltMonitor::scan(),
@@ -68,6 +72,7 @@ impl SystemStats {
     pub fn refresh(&mut self) {
         CpuMonitor::refresh(&mut self.sys);
         MemoryMonitor::refresh(&mut self.sys);
+        MemoryMonitor::refresh_pools(&mut self.memory);
         DiskMonitor::refresh(&mut self.disks);
         FanMonitor::refresh(&mut self.fans);
         VoltMonitor::refresh(&mut self.volts);
