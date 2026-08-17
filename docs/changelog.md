@@ -11,6 +11,10 @@ All notable changes to this project will be documented in this file.
 - Voltage tiles read from `inN_input`, colored against the `inN_min`/`inN_max` window.
 - `hwmon` scanner shared by fans and voltages, with per channel scale factor.
 - One tile per GPU reporting `gpu_busy_percent`, labeled by drm node and driver.
+- GPU temperature and clock rows on Linux, read from the hwmon chip `amdgpu` hangs off
+  each card. Channels are labeled by card, so a hybrid laptop does not mix the discrete
+  card with the integrated one. Clocks are colored against the top DPM state published in
+  `pp_dpm_sclk`/`pp_dpm_mclk`.
 - Config lookup falls back to `~/.config/r-heatmap/config.toml`, or to
   `%APPDATA%\r-heatmap\config.toml` on Windows, where `HOME` does not exist.
 - Windows support. CPU, cores and RAM work as they do on Linux. Disk temperatures are
@@ -57,15 +61,6 @@ All notable changes to this project will be documented in this file.
   value under the label.
 - The disk row is rendered from readings rather than straight from `sysinfo` components,
   so both sources can feed it.
-
-## [0.1.0]
-
-### Added
-
-- Initial release of `r-heatmap`.
-- Dynamic TUI with `ratatui`.
-- System temperature monitoring with `sysinfo`.
-- Configurable TOML support.
-- Modular architecture (config, system, ui).
-- Status bar with CPU and RAM usage.
-- GitHub link in footer.
+- The hwmon scanner takes one chip directory at a time, so chips that are not under
+  `/sys/class/hwmon` can go through it.
+- `util` moved under `ui`, where both of its files are used.

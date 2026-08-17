@@ -1,6 +1,6 @@
 use crate::config::Config;
 use crate::system::SystemStats;
-use crate::util::color::parse_color;
+use crate::ui::util::color::parse_color;
 use ratatui::{
     Frame,
     layout::{Alignment, Rect},

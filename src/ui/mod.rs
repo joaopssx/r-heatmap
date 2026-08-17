@@ -1,6 +1,7 @@
 // TUI rendering and event handling - by joaopssx
 pub mod events;
 pub mod layout;
+pub mod util;
 pub mod widgets;
 
 use self::layout::grid;
@@ -8,7 +9,9 @@ use self::widgets::{footer, header, tile};
 use crate::config::Config;
 use crate::system::Reading;
 use crate::system::SystemStats;
-use crate::util::color::{get_fan_color, get_usage_color, get_volt_color, parse_color};
+use crate::ui::util::color::{
+    get_clock_color, get_fan_color, get_usage_color, get_volt_color, parse_color,
+};
 use ratatui::{
     Frame,
     layout::{Alignment, Constraint, Direction, Layout, Rect},
@@ -46,6 +49,8 @@ pub fn render(f: &mut Frame, stats: &SystemStats, config: &Config) {
             Constraint::Length(row_height(stats.fans.len(), 5)),
             Constraint::Length(row_height(stats.volts.len(), 5)),
             Constraint::Length(row_height(stats.gpus.len(), 5)),
+            Constraint::Length(row_height(stats.gpu_temps.len(), 5)),
+            Constraint::Length(row_height(stats.gpu_clocks.len(), 5)),
             Constraint::Min(0),
         ])
         .split(main_area);
@@ -64,7 +69,13 @@ pub fn render(f: &mut Frame, stats: &SystemStats, config: &Config) {
     render_reading_grid(f, content_chunks[5], &stats.gpus, 0, "%", |r| {
         get_usage_color(r.value)
     });
-    render_core_usage_grid(f, content_chunks[6], stats, config);
+    render_reading_grid(f, content_chunks[6], &stats.gpu_temps, 1, "°C", |r| {
+        get_temp_level_color(r.value, config)
+    });
+    render_reading_grid(f, content_chunks[7], &stats.gpu_clocks, 0, " MHz", |r| {
+        get_clock_color(r.value, r.max)
+    });
+    render_core_usage_grid(f, content_chunks[8], stats, config);
     footer::render(f, chunks[1], stats, config);
 }
 

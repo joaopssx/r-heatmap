@@ -4,7 +4,6 @@ mod config;
 mod logging;
 mod system;
 mod ui;
-mod util;
 
 use crate::config::Config;
 use crate::system::SystemStats;
@@ -26,7 +25,7 @@ fn main() -> Result<()> {
 
     let config = config::load_config(args.config.as_deref());
 
-    util::console::use_utf8();
+    ui::util::console::use_utf8();
     enable_raw_mode()?;
     let mut stdout = io::stdout();
     execute!(stdout, EnterAlternateScreen)?;

@@ -88,6 +88,26 @@ Connector entries such as `card0-eDP-1` are skipped, and so are cards without th
 nothing here and the row stays hidden. Windows has its own source, described below, with
 no such vendor limitation. `--no-gpu` skips the scan on both.
 
+### AMD
+
+`amdgpu` hangs a full hwmon chip off each card at `device/hwmon/hwmonN/`, so temperature
+and clocks are read with the same scanner used for the machine's own chips, only rooted
+at the card instead of `/sys/class/hwmon`. Channels are named after the card rather than
+the chip — `card1 edge`, `card1 junction`, `card1 mem` for temperatures, `card1 sclk` and
+`card1 mclk` for clocks — which is what keeps a discrete card apart from the integrated
+one on a hybrid laptop, where both answer as `amdgpu`. Temperatures are colored against
+`thresholds`, like every other temperature in the interface.
+
+Clocks come from `freqN_input` in Hz and are shown in MHz. hwmon publishes no ceiling for
+them, so the top DPM state is read from `device/pp_dpm_sclk` and `pp_dpm_mclk` (the
+domain name in the label is the file name) and the tile is colored by how close the card
+is running to it. A card that publishes no DPM table is drawn blue, the same way a
+voltage rail with no window is.
+
+The GPU fan and GPU voltage rails are not read here: that same chip is also listed in
+`/sys/class/hwmon`, so the fan and voltage rows already pick them up as `amdgpu fan1` and
+`amdgpu in0`.
+
 ## WINDOWS
 
 Each row is a monitor with two implementations picked by `cfg`, so `SystemStats` calls
@@ -140,9 +160,11 @@ rather than a warning about a path that was never going to exist.
   each, with a `scan_platform`/`refresh_platform` pair per system. Under them, `hwmon` and
   `drm` read `/sys`, and `windows::storage`, `windows::perf` and `windows::adapters` do
   the equivalent through Win32. Adding a channel type is still a matter of scanning a new
-  prefix.
+  prefix. `hwmon::scan_chip` takes a single chip directory, so a chip that lives outside
+  `/sys/class/hwmon` — an AMD card's, for instance — goes through the same code.
 - **UI**: Terminal interface built with `ratatui`. Rows are laid out top to bottom
-  (header, temperatures, disks, fans, voltages, GPUs, cores) and a row with no readings
+  (header, temperatures, disks, fans, voltages, GPU usage, GPU temperatures, GPU clocks,
+  cores) and a row with no readings
   is given zero height. Disks, fans, voltages and GPUs share one grid renderer,
   parameterized by decimals, unit and color function. Tiles inside a row are laid out with
   `Fill`, so the leftover lines are spread instead of piling onto one row and leaving the

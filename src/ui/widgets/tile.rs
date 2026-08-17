@@ -1,4 +1,4 @@
-use crate::util::color::is_color_light;
+use crate::ui::util::color::is_color_light;
 use ratatui::{
     Frame,
     layout::{Alignment, Constraint, Direction, Layout, Rect},

@@ -31,6 +31,13 @@ pub fn get_fan_color(rpm: f32, max: Option<f32>) -> Color {
     }
 }
 
+pub fn get_clock_color(mhz: f32, max: Option<f32>) -> Color {
+    match max {
+        Some(max) if max > 0.0 => get_usage_color(mhz / max * 100.0),
+        _ => Color::Blue,
+    }
+}
+
 pub fn get_volt_color(volts: f32, min: Option<f32>, max: Option<f32>) -> Color {
     let out_of_range = min.is_some_and(|min| volts < min) || max.is_some_and(|max| volts > max);
 

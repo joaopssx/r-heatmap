@@ -31,6 +31,8 @@ pub struct SystemStats {
     pub fans: Vec<Reading>,
     pub volts: Vec<Reading>,
     pub gpus: Vec<Reading>,
+    pub gpu_temps: Vec<Reading>,
+    pub gpu_clocks: Vec<Reading>,
 }
 
 impl SystemStats {
@@ -50,6 +52,16 @@ impl SystemStats {
             } else {
                 Vec::new()
             },
+            gpu_temps: if gpu_enabled {
+                GpuMonitor::scan_temps()
+            } else {
+                Vec::new()
+            },
+            gpu_clocks: if gpu_enabled {
+                GpuMonitor::scan_clocks()
+            } else {
+                Vec::new()
+            },
         }
     }
 
@@ -60,6 +72,8 @@ impl SystemStats {
         FanMonitor::refresh(&mut self.fans);
         VoltMonitor::refresh(&mut self.volts);
         GpuMonitor::refresh(&mut self.gpus);
+        GpuMonitor::refresh_sensors(&mut self.gpu_temps);
+        GpuMonitor::refresh_sensors(&mut self.gpu_clocks);
         self.components.refresh(true);
     }
 

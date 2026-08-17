@@ -11,6 +11,7 @@ System thermal and load monitoring utility for Linux and Windows terminals.
 - Fan speeds in RPM.
 - Voltage rails, when the chip exposes them.
 - Usage of every GPU that reports it, one tile per card.
+- GPU temperature and clocks on AMD cards, straight from the `amdgpu` driver.
 - Per core usage, plus a status bar with global CPU and RAM usage.
 
 Rows with nothing to report are hidden instead of showing empty tiles, so a laptop
@@ -80,6 +81,10 @@ Rust stable, plus one of:
 ### Linux
 
 A kernel with `hwmon` and `sysfs` support, which is everything but an embedded build.
+
+AMD GPUs need nothing installed: `amdgpu` publishes usage, temperature and clocks in
+`sysfs`, and all three are read from there. Intel and NVIDIA cards publish none of it
+through the open driver, so their rows stay hidden.
 
 NVMe drives report their temperature out of the box. SATA drives need the `drivetemp`
 module:

@@ -73,6 +73,7 @@ pub fn refresh(readings: &mut [Reading]) {
     }
 }
 
+#[cfg(windows)]
 pub fn update(readings: &mut [Reading], fresh: &[Reading]) {
     for reading in readings {
         if let Some(fresh) = fresh.iter().find(|f| f.label == reading.label) {
