@@ -38,6 +38,8 @@ logs why, so a broken config never takes the program down.
   Linux. Matching nothing at all falls back to showing everything that was found.
 - `style.disk_label_contains`: Which discovered sensors go in the disk row. Optional,
   defaults to `["nvme", "drivetemp"]`. The row is hidden when nothing matches.
+- `style.board_label_contains`: Which discovered sensors go in the chipset row. Optional,
+  defaults to `["pch", "systin", "chipset", "motherboard", "ambient"]`.
 - `style.show_other_sensors`: Show a row with the sensors neither filter claimed, off by
   default. On a laptop that is usually the battery, the ambient probe and the wifi card.
 - `thresholds`: Temperature boundaries for heatmap color mapping.
@@ -94,11 +96,18 @@ one. That is how `nvme Composite KINGSTON SNV2S1000G` and `dell_smm temp1` come 
 the same code, and it is the same label `sysinfo` used to compose, so filters written
 against the old behaviour still match.
 
-Discovered sensors are split into three rows in this order: anything matching
-`disk_label_contains` goes to the disk row, anything left matching
-`sensor_label_contains` goes to the CPU row, and the remainder goes to the other row,
-which is hidden unless `show_other_sensors` is on. Disk is checked first because a drive
-label can contain a CPU word.
+Discovered sensors are split into four rows, in this order: `disk_label_contains` takes
+the disk row, `board_label_contains` the chipset row, `sensor_label_contains` the CPU row,
+and the remainder goes to the other row, which is hidden unless `show_other_sensors` is
+on. The order is the precedence: the narrower lists are checked first because a drive or a
+board label can contain a CPU word.
+
+The chipset row is where the board's own probes go — `PCH_CHIP_TEMP` on Intel boards,
+`SYSTIN` on the `nct6775` family, `Ambient` on Dell laptops. They are worth keeping out of
+the CPU row rather than hiding: on a box with several NVMe drives and a hot GPU the
+chipset can be the part that throttles, and it never shows up in a CPU reading. Note that
+`CPUTIN` is the socket temperature the board reports and stays in the CPU row, where it
+belongs.
 
 The fallback matters more than the filters: if `sensor_label_contains` matches nothing,
 it is ignored and every sensor found is drawn. A machine whose CPU chip calls itself
@@ -229,8 +238,9 @@ rather than a warning about a path that was never going to exist.
   prefix. `hwmon::scan_chip` takes a single chip directory, so a chip that lives outside
   `/sys/class/hwmon` — an AMD card's, for instance — goes through the same code.
 - **UI**: Terminal interface built with `ratatui`. Rows are laid out top to bottom
-  (header, memory, temperatures, disks, fans, voltages, GPU usage, GPU temperatures, GPU
-  clocks, cores) — cores last because the row grows with the core count and a row with no readings
+  (header, memory, CPU temperatures, chipset, disks, other sensors, fans, voltages, GPU
+  usage, GPU temperatures, GPU clocks, cores) — cores last because the row grows with the
+  core count and a row with no readings
   is given zero height, and a row that has readings is given four lines per grid row it
   needs, so a machine with sixteen core sensors gets a taller row instead of tiles too
   short to print their value. Every row shares one grid renderer, parameterized by

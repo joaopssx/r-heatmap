@@ -23,12 +23,24 @@ pub struct StyleConfig {
     pub sensor_label_contains: Vec<String>,
     #[serde(default = "default_disk_labels")]
     pub disk_label_contains: Vec<String>,
+    #[serde(default = "default_board_labels")]
+    pub board_label_contains: Vec<String>,
     #[serde(default)]
     pub show_other_sensors: bool,
 }
 
 fn default_disk_labels() -> Vec<String> {
     vec!["nvme".to_string(), "drivetemp".to_string()]
+}
+
+fn default_board_labels() -> Vec<String> {
+    vec![
+        "pch".to_string(),
+        "systin".to_string(),
+        "chipset".to_string(),
+        "motherboard".to_string(),
+        "ambient".to_string(),
+    ]
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -59,6 +71,7 @@ impl Default for Config {
                     "computer".to_string(),
                 ],
                 disk_label_contains: default_disk_labels(),
+                board_label_contains: default_board_labels(),
                 show_other_sensors: false,
             },
             thresholds: ThresholdsConfig {
