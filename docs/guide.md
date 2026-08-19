@@ -38,6 +38,26 @@ logs why, so a broken config never takes the program down.
 - `style.disk_label_contains`: Filter list for disk hwmon labels. Optional, defaults to `["nvme", "drivetemp"]`. The disk row is hidden when nothing matches.
 - `thresholds`: Temperature boundaries for heatmap color mapping.
 
+## CORES
+
+The core row is one tile per logical CPU, which is where a single threaded process gives
+itself away: one tile pinned at 100% while the rest sit idle looks nothing like a build
+spreading over every core.
+
+On Linux the numbers come from `/proc/stat`, which counts jiffies spent in each state
+since boot rather than a percentage. A usage figure only exists between two readings, so
+each tick subtracts the previous snapshot from the current one and divides the busy jiffies
+by the total. Startup takes the first snapshot, which is why the row reads 0% for the
+first refresh interval and no longer than that. `iowait` is counted as idle: a core waiting
+on the disk is not doing work, and folding it into busy would make an I/O bound copy look
+like a CPU bound one.
+
+The aggregate `cpu` line is skipped, so is everything below the per core lines. The status
+bar keeps taking its global figure from `sysinfo`, which is a different average of the same
+thing, so the two can disagree by a fraction of a percent.
+
+Windows builds the row from `sysinfo` instead, one tile per CPU it reports.
+
 ## MEMORY
 
 The memory row sits under the header, before the temperatures, because a temperature
@@ -177,17 +197,17 @@ rather than a warning about a path that was never going to exist.
   one file on refresh; one produced in a batch — anything on Windows — is refreshed by its
   monitor handing back a fresh set that `reading::update` merges by label, which keeps
   tiles from reordering under the cursor. `disk`, `fan`, `volt` and `gpu` are one monitor
-  each, with a `scan_platform`/`refresh_platform` pair per system, and `memory` is a fifth
-  one on top of the usage figures it already fed the status bar. Under them, `hwmon`,
-  `drm` and `meminfo` read `/proc` and `/sys`, and `windows::storage`, `windows::perf` and
+  each, with a `scan_platform`/`refresh_platform` pair per system, and `memory` and `cpu`
+  are two more on top of the usage figures they already fed the status bar. Under them,
+  `hwmon`, `drm`, `meminfo` and `stat` read `/proc` and `/sys`, and `windows::storage`, `windows::perf` and
   `windows::adapters` do
   the equivalent through Win32. Adding a channel type is still a matter of scanning a new
   prefix. `hwmon::scan_chip` takes a single chip directory, so a chip that lives outside
   `/sys/class/hwmon` — an AMD card's, for instance — goes through the same code.
 - **UI**: Terminal interface built with `ratatui`. Rows are laid out top to bottom
   (header, memory, temperatures, disks, fans, voltages, GPU usage, GPU temperatures, GPU
-  clocks, cores) and a row with no readings
-  is given zero height. Disks, fans, voltages and GPUs share one grid renderer,
+  clocks, cores) — cores last because the row grows with the core count and a row with no readings
+  is given zero height. Every row but the CPU temperatures shares one grid renderer,
   parameterized by decimals, unit and color function. Tiles inside a row are laid out with
   `Fill`, so the leftover lines are spread instead of piling onto one row and leaving the
   others too short to print their value.

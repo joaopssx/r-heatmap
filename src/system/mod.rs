@@ -12,6 +12,8 @@ pub mod meminfo;
 pub mod memory;
 pub mod reading;
 #[cfg(unix)]
+pub mod stat;
+#[cfg(unix)]
 pub mod sysfs;
 pub mod volt;
 #[cfg(windows)]
@@ -29,6 +31,7 @@ pub use volt::VoltMonitor;
 pub struct SystemStats {
     pub sys: System,
     pub components: Components,
+    pub cores: Vec<Reading>,
     pub memory: Vec<Reading>,
     pub disks: Vec<Reading>,
     pub fans: Vec<Reading>,
@@ -43,10 +46,12 @@ impl SystemStats {
         let mut sys = System::new_all();
         sys.refresh_all();
         let components = Components::new_with_refreshed_list();
+        let cores = CpuMonitor::scan(&sys);
 
         Self {
             sys,
             components,
+            cores,
             memory: MemoryMonitor::scan(),
             disks: DiskMonitor::scan(),
             fans: FanMonitor::scan(),
@@ -71,6 +76,7 @@ impl SystemStats {
 
     pub fn refresh(&mut self) {
         CpuMonitor::refresh(&mut self.sys);
+        CpuMonitor::refresh_cores(&mut self.cores, &self.sys);
         MemoryMonitor::refresh(&mut self.sys);
         MemoryMonitor::refresh_pools(&mut self.memory);
         DiskMonitor::refresh(&mut self.disks);
@@ -84,10 +90,6 @@ impl SystemStats {
 
     pub fn cpu_usage(&self) -> f32 {
         CpuMonitor::get_global_usage(&self.sys)
-    }
-
-    pub fn cpu_cores_usage(&self) -> Vec<f32> {
-        CpuMonitor::get_cores_usage(&self.sys)
     }
 
     pub fn mem_usage(&self) -> (u64, u64) {

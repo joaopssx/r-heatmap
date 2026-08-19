@@ -79,7 +79,9 @@ pub fn render(f: &mut Frame, stats: &SystemStats, config: &Config) {
     render_reading_grid(f, content_chunks[8], &stats.gpu_clocks, 0, " MHz", |r| {
         get_clock_color(r.value, r.max)
     });
-    render_core_usage_grid(f, content_chunks[9], stats, config);
+    render_reading_grid(f, content_chunks[9], &stats.cores, 1, "%", |r| {
+        get_usage_color(r.value)
+    });
     footer::render(f, chunks[1], stats, config);
 }
 
@@ -167,34 +169,6 @@ fn render_reading_grid<F>(
                     &reading.label,
                     &format!("{:.*}{}", decimals, reading.value, unit),
                     color(reading),
-                );
-                idx += 1;
-            }
-        }
-    }
-}
-
-fn render_core_usage_grid(f: &mut Frame, area: Rect, stats: &SystemStats, _config: &Config) {
-    let usages = stats.cpu_cores_usage();
-    let count = usages.len();
-    if count == 0 {
-        return;
-    }
-
-    let grid_rects = grid::calculate_grid(area, count);
-
-    let mut idx = 0;
-    for row in grid_rects {
-        for col_rect in row {
-            if idx < count {
-                let usage = usages[idx];
-                let label = format!("Core {}", idx);
-                tile::render_tile(
-                    f,
-                    col_rect,
-                    &label,
-                    &format!("{:.1}%", usage),
-                    get_usage_color(usage),
                 );
                 idx += 1;
             }

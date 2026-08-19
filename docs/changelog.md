@@ -11,6 +11,9 @@ All notable changes to this project will be documented in this file.
 - Voltage tiles read from `inN_input`, colored against the `inN_min`/`inN_max` window.
 - `hwmon` scanner shared by fans and voltages, with per channel scale factor.
 - One tile per GPU reporting `gpu_busy_percent`, labeled by drm node and driver.
+- Per core usage is measured from `/proc/stat` on Linux, as the delta between two
+  refreshes, with `iowait` counted as idle. The row is rendered like every other one
+  instead of through a widget of its own.
 - Memory row with RAM and swap pressure, parsed from `/proc/meminfo`. RAM is measured
   against `MemAvailable`, not `MemFree`, so the page cache does not read as used memory.
   The swap tile is dropped on machines with no swap.
