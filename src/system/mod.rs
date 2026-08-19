@@ -1,5 +1,7 @@
 // Core system monitoring logic - by joaopssx
 pub mod cpu;
+#[cfg(unix)]
+pub mod cpufreq;
 pub mod disk;
 #[cfg(unix)]
 pub mod drm;

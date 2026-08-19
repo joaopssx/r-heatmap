@@ -1,6 +1,6 @@
 use crate::system::reading::{self, Reading};
 #[cfg(unix)]
-use crate::system::stat;
+use crate::system::{cpufreq, stat};
 use sysinfo::{CpuRefreshKind, System};
 
 pub struct CpuMonitor;
@@ -27,7 +27,10 @@ impl CpuMonitor {
 
 #[cfg(unix)]
 fn cores_platform(_sys: &System) -> Vec<Reading> {
-    stat::cores()
+    let mut cores = stat::cores();
+    cpufreq::annotate(&mut cores);
+
+    cores
 }
 
 #[cfg(not(unix))]

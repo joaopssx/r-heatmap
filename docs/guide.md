@@ -62,7 +62,19 @@ The aggregate `cpu` line is skipped, so is everything below the per core lines. 
 bar keeps taking its global figure from `sysinfo`, which is a different average of the same
 thing, so the two can disagree by a fraction of a percent.
 
-Windows builds the row from `sysinfo` instead, one tile per CPU it reports.
+Each tile also carries the core's current clock, read from
+`/sys/devices/system/cpu/cpuN/cpufreq/scaling_cur_freq` and printed in GHz next to the
+percentage. That pairing is the point: a core at 100% and 4.6 GHz is working, a core at
+100% and 1.2 GHz is being held back, and the temperature row above says which. A core with
+no `cpufreq` directory — a kernel without a scaling driver, a VM — simply shows the
+percentage alone.
+
+The clock rides along as a note on the reading rather than a row of its own, since it
+belongs to the same tile as the usage it explains, and notes are copied on refresh like
+values are. It is the only thing in the interface that puts two numbers in one tile.
+
+Windows builds the row from `sysinfo` instead, one tile per CPU it reports, with no clock
+next to it.
 
 ## MEMORY
 
@@ -225,7 +237,7 @@ rather than a warning about a path that was never going to exist.
 ## ARCHITECTURE
 
 - **System**: `reading` holds the primitive every row is built from: a label, a value, an
-  optional window and where it came from. A reading backed by a `sysfs` file rereads that
+  optional window, an optional note printed beside the value, and where it came from. A reading backed by a `sysfs` file rereads that
   one file on refresh; one produced in a batch — anything on Windows — is refreshed by its
   monitor handing back a fresh set that `reading::update` merges by label, which keeps
   tiles from reordering under the cursor. `disk`, `fan`, `volt` and `gpu` are one monitor

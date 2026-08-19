@@ -9,6 +9,7 @@ pub struct Reading {
     pub value: f32,
     pub min: Option<f32>,
     pub max: Option<f32>,
+    pub note: Option<String>,
     source: Source,
 }
 
@@ -29,6 +30,7 @@ impl Reading {
             value,
             min: None,
             max: None,
+            note: None,
             source: Source::Owner,
         }
     }
@@ -42,6 +44,7 @@ impl Reading {
             value,
             min: None,
             max: None,
+            note: None,
             source: Source::File { input, scale },
         })
     }
@@ -77,6 +80,7 @@ pub fn update(readings: &mut [Reading], fresh: &[Reading]) {
     for reading in readings {
         if let Some(fresh) = fresh.iter().find(|f| f.label == reading.label) {
             reading.value = fresh.value;
+            reading.note = fresh.note.clone();
         }
     }
 }

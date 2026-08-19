@@ -166,13 +166,13 @@ fn render_reading_grid<F>(
     for row in grid_rects {
         for col_rect in row {
             if let Some(reading) = readings.get(idx) {
-                tile::render_tile(
-                    f,
-                    col_rect,
-                    &reading.label,
-                    &format!("{:.*}{}", decimals, reading.value, unit),
-                    color(reading),
-                );
+                let value = format!("{:.*}{}", decimals, reading.value, unit);
+                let value = match &reading.note {
+                    Some(note) => format!("{value}   {note}"),
+                    None => value,
+                };
+
+                tile::render_tile(f, col_rect, &reading.label, &value, color(reading));
                 idx += 1;
             }
         }

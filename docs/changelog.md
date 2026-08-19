@@ -15,6 +15,8 @@ All notable changes to this project will be documented in this file.
   through `sysinfo`. The config no longer declares which sensors exist, it only sorts the
   discovered ones into the CPU, disk and other rows, and a `sensor_label_contains` that
   matches nothing is ignored rather than leaving the screen empty.
+- Current clock of each core, from `cpufreq/scaling_cur_freq`, printed inside the core
+  tile next to its usage, so throttling can be read against the temperature row.
 - Chipset row, split off from the CPU one, for the board's own probes: `PCH_CHIP_TEMP`,
   `SYSTIN`, `Ambient` and anything else matching `style.board_label_contains`.
 - `style.show_other_sensors`, off by default, for the sensors no filter claimed.

@@ -13,8 +13,8 @@ System thermal and load monitoring utility for Linux and Windows terminals.
 - Voltage rails, when the chip exposes them.
 - Usage of every GPU that reports it, one tile per card.
 - GPU temperature and clocks on AMD cards, straight from the `amdgpu` driver.
-- Per core usage, measured from `/proc/stat` between refreshes, plus a status bar with
-  global CPU and RAM usage.
+- Per core usage, measured from `/proc/stat` between refreshes, with the current clock of
+  that core next to it, plus a status bar with global CPU and RAM usage.
 
 Rows with nothing to report are hidden instead of showing empty tiles, so a laptop
 without voltage sensors simply does not get a voltage row. Which rows you get depends on
