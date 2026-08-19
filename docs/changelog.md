@@ -11,6 +11,11 @@ All notable changes to this project will be documented in this file.
 - Voltage tiles read from `inN_input`, colored against the `inN_min`/`inN_max` window.
 - `hwmon` scanner shared by fans and voltages, with per channel scale factor.
 - One tile per GPU reporting `gpu_busy_percent`, labeled by drm node and driver.
+- Temperatures are discovered by scanning every `hwmon` chip instead of being read
+  through `sysinfo`. The config no longer declares which sensors exist, it only sorts the
+  discovered ones into the CPU, disk and other rows, and a `sensor_label_contains` that
+  matches nothing is ignored rather than leaving the screen empty.
+- `style.show_other_sensors`, off by default, for the sensors neither filter claimed.
 - Per core usage is measured from `/proc/stat` on Linux, as the delta between two
   refreshes, with `iowait` counted as idle. The row is rendered like every other one
   instead of through a widget of its own.
@@ -67,6 +72,13 @@ All notable changes to this project will be documented in this file.
   value under the label.
 - The disk row is rendered from readings rather than straight from `sysinfo` components,
   so both sources can feed it.
+- Rows are as tall as their grid needs, four lines per row of tiles. A row with twelve
+  sensors used to get the same six lines as a row with two, which left two lines per tile
+  and hid every value behind its own border.
+- hwmon chips are visited in sorted order, so fans, voltages and temperatures keep their
+  places between runs.
+- `sysinfo` components are only read on Windows now, and are no longer refreshed every
+  tick on Linux, where that meant walking all of `hwmon` a second time per frame.
 - The hwmon scanner takes one chip directory at a time, so chips that are not under
   `/sys/class/hwmon` can go through it.
 - `util` moved under `ui`, where both of its files are used.

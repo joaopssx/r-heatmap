@@ -4,6 +4,8 @@ pub mod layout;
 pub mod util;
 pub mod widgets;
 
+const TILE_HEIGHT: u16 = 4;
+
 use self::layout::grid;
 use self::widgets::{footer, header, tile};
 use crate::config::Config;
@@ -18,7 +20,6 @@ use ratatui::{
     style::{Color, Style},
     widgets::{Block, BorderType, Borders},
 };
-use sysinfo::Component;
 
 pub fn render(f: &mut Frame, stats: &SystemStats, config: &Config) {
     let chunks = Layout::default()
@@ -37,110 +38,101 @@ pub fn render(f: &mut Frame, stats: &SystemStats, config: &Config) {
     let main_area = main_block.inner(chunks[0]);
     f.render_widget(main_block, chunks[0]);
 
-    let sensors = collect_sensors(stats, &config.style.sensor_label_contains);
-    let disks = collect_disks(stats, &config.style.disk_label_contains);
+    let temps = split_temps(stats, config);
 
     let content_chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
             Constraint::Length(1),
-            Constraint::Length(row_height(stats.memory.len(), 5)),
-            Constraint::Length(row_height(sensors.len(), 6)),
-            Constraint::Length(row_height(disks.len(), 5)),
-            Constraint::Length(row_height(stats.fans.len(), 5)),
-            Constraint::Length(row_height(stats.volts.len(), 5)),
-            Constraint::Length(row_height(stats.gpus.len(), 5)),
-            Constraint::Length(row_height(stats.gpu_temps.len(), 5)),
-            Constraint::Length(row_height(stats.gpu_clocks.len(), 5)),
+            Constraint::Length(row_height(stats.memory.len())),
+            Constraint::Length(row_height(temps.cpus.len())),
+            Constraint::Length(row_height(temps.disks.len())),
+            Constraint::Length(row_height(temps.others.len())),
+            Constraint::Length(row_height(stats.fans.len())),
+            Constraint::Length(row_height(stats.volts.len())),
+            Constraint::Length(row_height(stats.gpus.len())),
+            Constraint::Length(row_height(stats.gpu_temps.len())),
+            Constraint::Length(row_height(stats.gpu_clocks.len())),
             Constraint::Min(0),
         ])
         .split(main_area);
+
+    let temp_color = |r: &Reading| get_temp_level_color(r.value, config);
 
     header::render(f, content_chunks[0], stats, config);
     render_reading_grid(f, content_chunks[1], &stats.memory, 1, "%", |r| {
         get_usage_color(r.value)
     });
-    render_sensor_grid(f, content_chunks[2], &sensors, config);
-    render_reading_grid(f, content_chunks[3], &disks, 1, "°C", |r| {
-        get_temp_level_color(r.value, config)
-    });
-    render_reading_grid(f, content_chunks[4], &stats.fans, 0, " RPM", |r| {
+    render_reading_grid(f, content_chunks[2], &temps.cpus, 1, "°C", temp_color);
+    render_reading_grid(f, content_chunks[3], &temps.disks, 1, "°C", temp_color);
+    render_reading_grid(f, content_chunks[4], &temps.others, 1, "°C", temp_color);
+    render_reading_grid(f, content_chunks[5], &stats.fans, 0, " RPM", |r| {
         get_fan_color(r.value, r.max)
     });
-    render_reading_grid(f, content_chunks[5], &stats.volts, 3, " V", |r| {
+    render_reading_grid(f, content_chunks[6], &stats.volts, 3, " V", |r| {
         get_volt_color(r.value, r.min, r.max)
     });
-    render_reading_grid(f, content_chunks[6], &stats.gpus, 0, "%", |r| {
+    render_reading_grid(f, content_chunks[7], &stats.gpus, 0, "%", |r| {
         get_usage_color(r.value)
     });
-    render_reading_grid(f, content_chunks[7], &stats.gpu_temps, 1, "°C", |r| {
-        get_temp_level_color(r.value, config)
-    });
-    render_reading_grid(f, content_chunks[8], &stats.gpu_clocks, 0, " MHz", |r| {
+    render_reading_grid(f, content_chunks[8], &stats.gpu_temps, 1, "°C", temp_color);
+    render_reading_grid(f, content_chunks[9], &stats.gpu_clocks, 0, " MHz", |r| {
         get_clock_color(r.value, r.max)
     });
-    render_reading_grid(f, content_chunks[9], &stats.cores, 1, "%", |r| {
+    render_reading_grid(f, content_chunks[10], &stats.cores, 1, "%", |r| {
         get_usage_color(r.value)
     });
     footer::render(f, chunks[1], stats, config);
 }
 
-fn row_height(count: usize, height: u16) -> u16 {
-    if count == 0 { 0 } else { height }
+struct Temps {
+    cpus: Vec<Reading>,
+    disks: Vec<Reading>,
+    others: Vec<Reading>,
 }
 
-fn collect_disks(stats: &SystemStats, filters: &[String]) -> Vec<Reading> {
-    let mut disks: Vec<Reading> = collect_sensors(stats, filters)
-        .iter()
-        .map(|sensor| {
-            Reading::new(
-                sensor.label().to_string(),
-                sensor.temperature().unwrap_or(0.0),
-            )
-        })
-        .collect();
+fn split_temps(stats: &SystemStats, config: &Config) -> Temps {
+    let mut temps = Temps {
+        cpus: Vec::new(),
+        disks: Vec::new(),
+        others: Vec::new(),
+    };
 
-    disks.extend(stats.disks.iter().cloned());
-    disks
-}
-
-fn collect_sensors<'a>(stats: &'a SystemStats, filters: &[String]) -> Vec<&'a Component> {
-    let mut sensors: Vec<_> = stats
-        .components
-        .iter()
-        .filter(|c| {
-            let label = c.label().to_lowercase();
-            filters.iter().any(|f| label.contains(f))
-        })
-        .collect();
-
-    sensors.sort_by_key(|s| s.label());
-    sensors
-}
-
-fn render_sensor_grid(f: &mut Frame, area: Rect, sensors: &[&Component], config: &Config) {
-    if sensors.is_empty() {
-        return;
-    }
-
-    let grid_rects = grid::calculate_grid(area, sensors.len());
-
-    let mut idx = 0;
-    for row in grid_rects {
-        for col_rect in row {
-            if let Some(s) = sensors.get(idx) {
-                let temp = s.temperature().unwrap_or(0.0);
-                tile::render_tile(
-                    f,
-                    col_rect,
-                    s.label(),
-                    &format!("{:.1}°C", temp),
-                    get_temp_level_color(temp, config),
-                );
-                idx += 1;
-            }
+    for reading in &stats.temps {
+        if matches(reading, &config.style.disk_label_contains) {
+            temps.disks.push(reading.clone());
+        } else if matches(reading, &config.style.sensor_label_contains) {
+            temps.cpus.push(reading.clone());
+        } else {
+            temps.others.push(reading.clone());
         }
     }
+
+    if temps.cpus.is_empty() {
+        temps.cpus.append(&mut temps.others);
+    }
+
+    if !config.style.show_other_sensors {
+        temps.others.clear();
+    }
+
+    temps.disks.extend(stats.disks.iter().cloned());
+
+    for row in [&mut temps.cpus, &mut temps.disks, &mut temps.others] {
+        row.sort_by(|a, b| a.label.cmp(&b.label));
+    }
+
+    temps
+}
+
+fn matches(reading: &Reading, filters: &[String]) -> bool {
+    let label = reading.label.to_lowercase();
+
+    filters.iter().any(|filter| label.contains(filter))
+}
+
+fn row_height(count: usize) -> u16 {
+    grid::rows(count) as u16 * TILE_HEIGHT
 }
 
 fn render_reading_grid<F>(

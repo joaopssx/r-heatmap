@@ -7,8 +7,8 @@ System thermal and load monitoring utility for Linux and Windows terminals.
 ## What it shows
 
 - RAM and swap pressure, read from `/proc/meminfo` on Linux.
-- CPU package and core temperatures, colored by threshold.
-- Disk temperatures (NVMe and SATA).
+- Every temperature the machine exposes, found on its own, split into CPU, disk and
+  everything else.
 - Fan speeds in RPM.
 - Voltage rails, when the chip exposes them.
 - Usage of every GPU that reports it, one tile per card.
@@ -60,6 +60,7 @@ border_color = "Cyan"
 header_color = "Yellow"
 sensor_label_contains = ["core", "tctl", "tccd", "cpu", "package", "die", "computer"]
 disk_label_contains = ["nvme", "drivetemp"]
+show_other_sensors = false
 
 [thresholds]
 cold = 40.0
@@ -68,7 +69,14 @@ hot = 80.0
 critical = 90.0
 ```
 
-Fans and voltages have no filter list: every channel the kernel exposes is shown.
+Nothing in there declares a sensor. Every `hwmon` chip is scanned at startup and the
+filters only decide which row a discovered sensor lands in: `disk_label_contains` picks
+the disk row, `sensor_label_contains` the CPU row, and whatever is left is hidden unless
+`show_other_sensors` is on. If no sensor matches `sensor_label_contains` the filter is
+ignored and everything found is shown, so an unknown chip name never leaves the screen
+empty.
+
+Fans and voltages have no filter list either: every channel the kernel exposes is shown.
 
 ## Logging
 

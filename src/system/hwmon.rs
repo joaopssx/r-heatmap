@@ -10,16 +10,16 @@ pub fn scan(prefix: &str, scale: f32) -> Vec<Reading> {
         return readings;
     };
 
-    let chips = match fs::read_dir(&root) {
-        Ok(chips) => chips,
+    let mut chips: Vec<PathBuf> = match fs::read_dir(&root) {
+        Ok(chips) => chips.flatten().map(|chip| chip.path()).collect(),
         Err(e) => {
             log::warn!("Could not read {}: {}", root.display(), e);
             return readings;
         }
     };
+    chips.sort();
 
-    for chip in chips.flatten() {
-        let dir = chip.path();
+    for dir in chips {
         let name = sysfs::read_text(&dir.join("name")).unwrap_or_else(|| "hwmon".to_string());
 
         readings.extend(scan_chip(&dir, &name, prefix, scale));
@@ -30,6 +30,7 @@ pub fn scan(prefix: &str, scale: f32) -> Vec<Reading> {
 
 pub fn scan_chip(dir: &Path, name: &str, prefix: &str, scale: f32) -> Vec<Reading> {
     let mut readings = Vec::new();
+    let model = sysfs::read_text(&dir.join("device/model"));
 
     let mut inputs: Vec<PathBuf> = match fs::read_dir(dir) {
         Ok(entries) => entries
@@ -47,9 +48,14 @@ pub fn scan_chip(dir: &Path, name: &str, prefix: &str, scale: f32) -> Vec<Readin
             None => continue,
         };
 
-        let label = match sysfs::read_text(&dir.join(format!("{channel}_label"))) {
-            Some(label) if !label.is_empty() => format!("{name} {label}"),
-            _ => format!("{name} {channel}"),
+        let channel_label = match sysfs::read_text(&dir.join(format!("{channel}_label"))) {
+            Some(label) if !label.is_empty() => label,
+            _ => channel.clone(),
+        };
+
+        let label = match &model {
+            Some(model) => format!("{name} {channel_label} {model}"),
+            None => format!("{name} {channel_label}"),
         };
 
         let Some(mut reading) = Reading::from_file(label, input, scale) else {

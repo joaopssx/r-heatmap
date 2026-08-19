@@ -33,9 +33,13 @@ logs why, so a broken config never takes the program down.
 - `general.github_repo`: Text shown on the right side of the status bar.
 - `style.border_color`: Primary UI border color.
 - `style.header_color`: Information text color.
-- `style.sensor_label_contains`: Filter list for sensor labels. `computer` is in the
-  default list to catch the single sensor Windows reports; it matches nothing on Linux.
-- `style.disk_label_contains`: Filter list for disk hwmon labels. Optional, defaults to `["nvme", "drivetemp"]`. The disk row is hidden when nothing matches.
+- `style.sensor_label_contains`: Which discovered sensors go in the CPU row. `computer` is
+  in the default list to catch the single sensor Windows reports; it matches nothing on
+  Linux. Matching nothing at all falls back to showing everything that was found.
+- `style.disk_label_contains`: Which discovered sensors go in the disk row. Optional,
+  defaults to `["nvme", "drivetemp"]`. The row is hidden when nothing matches.
+- `style.show_other_sensors`: Show a row with the sensors neither filter claimed, off by
+  default. On a laptop that is usually the battery, the ambient probe and the wifi card.
 - `thresholds`: Temperature boundaries for heatmap color mapping.
 
 ## CORES
@@ -80,22 +84,41 @@ through `sysinfo` in the status bar, and the row is empty there.
 
 ## TEMPERATURES
 
-CPU and disk temperatures come from `sysinfo`, which enumerates every `hwmon` chip.
-Both rows are driven by substring filters over the sensor label, and the label is
-composed by `sysinfo` as chip name, channel label and device model — an NVMe drive
-shows up as something like `nvme Composite KINGSTON SNV2S1000G`, which is why
-filtering by `"nvme"` is enough.
+Every `hwmon` chip is walked at startup and every `tempN_input` under it becomes a
+reading, whatever the chip is. Nothing has to be declared: the config never says which
+sensors exist, it only decides where the ones that were found are drawn.
 
-On Windows `sysinfo` has no `hwmon` to walk and falls back to the ACPI thermal zone over
-WMI, which reports one sensor for the whole machine, labeled `Computer`. `computer` is in
-the default filter for that reason. Most desktop firmware does not implement the class,
-so the row is usually empty there — see WINDOWS.
+Labels are the chip name, then `tempN_label` when the chip publishes one and the channel
+name when it does not, then the device model when the chip hangs off a device that has
+one. That is how `nvme Composite KINGSTON SNV2S1000G` and `dell_smm temp1` come out of
+the same code, and it is the same label `sysinfo` used to compose, so filters written
+against the old behaviour still match.
+
+Discovered sensors are split into three rows in this order: anything matching
+`disk_label_contains` goes to the disk row, anything left matching
+`sensor_label_contains` goes to the CPU row, and the remainder goes to the other row,
+which is hidden unless `show_other_sensors` is on. Disk is checked first because a drive
+label can contain a CPU word.
+
+The fallback matters more than the filters: if `sensor_label_contains` matches nothing,
+it is ignored and every sensor found is drawn. A machine whose CPU chip calls itself
+something nobody guessed shows its temperatures anyway, which is the whole point of
+scanning instead of declaring. `-l debug` prints every sensor found with its starting
+value, which is the fastest way to write a filter for a chip you have never seen.
+
+Chips are visited in sorted order, so the rows do not shuffle between runs, and tiles
+inside a row are sorted by label.
+
+On Windows there is no `hwmon` to walk, so the row is built from `sysinfo` instead, which
+falls back to the ACPI thermal zone over WMI and reports one sensor for the whole machine,
+labeled `Computer`. `computer` is in the default filter for that reason. Most desktop
+firmware does not implement the class, so the row is usually empty there — see WINDOWS.
 
 ## DISKS
 
-The disk row takes whatever the sensor filters left behind on Linux and whatever
-`DiskMonitor` found on Windows, and renders both through the same grid. Only one of the
-two ever has anything in it. Tiles are colored against `thresholds`, like the CPU row,
+The disk row takes the discovered sensors that matched `disk_label_contains` on Linux and
+whatever `DiskMonitor` found on Windows, and renders both through the same grid. Only one
+of the two ever has anything in it. Tiles are colored against `thresholds`, like the CPU row,
 rather than against the warning point the drive publishes, so both rows read the same
 way.
 
@@ -198,7 +221,8 @@ rather than a warning about a path that was never going to exist.
   monitor handing back a fresh set that `reading::update` merges by label, which keeps
   tiles from reordering under the cursor. `disk`, `fan`, `volt` and `gpu` are one monitor
   each, with a `scan_platform`/`refresh_platform` pair per system, and `memory` and `cpu`
-  are two more on top of the usage figures they already fed the status bar. Under them,
+  are two more on top of the usage figures they already fed the status bar, and `temp`
+  discovers every temperature channel on the machine in one pass. Under them,
   `hwmon`, `drm`, `meminfo` and `stat` read `/proc` and `/sys`, and `windows::storage`, `windows::perf` and
   `windows::adapters` do
   the equivalent through Win32. Adding a channel type is still a matter of scanning a new
@@ -207,8 +231,10 @@ rather than a warning about a path that was never going to exist.
 - **UI**: Terminal interface built with `ratatui`. Rows are laid out top to bottom
   (header, memory, temperatures, disks, fans, voltages, GPU usage, GPU temperatures, GPU
   clocks, cores) — cores last because the row grows with the core count and a row with no readings
-  is given zero height. Every row but the CPU temperatures shares one grid renderer,
-  parameterized by decimals, unit and color function. Tiles inside a row are laid out with
+  is given zero height, and a row that has readings is given four lines per grid row it
+  needs, so a machine with sixteen core sensors gets a taller row instead of tiles too
+  short to print their value. Every row shares one grid renderer, parameterized by
+  decimals, unit and color function. Tiles inside a row are laid out with
   `Fill`, so the leftover lines are spread instead of piling onto one row and leaving the
   others too short to print their value.
 - **Events**: Crossterm-based event loop. Input is polled with whatever is left of the

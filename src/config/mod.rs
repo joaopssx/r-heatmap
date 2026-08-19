@@ -23,6 +23,8 @@ pub struct StyleConfig {
     pub sensor_label_contains: Vec<String>,
     #[serde(default = "default_disk_labels")]
     pub disk_label_contains: Vec<String>,
+    #[serde(default)]
+    pub show_other_sensors: bool,
 }
 
 fn default_disk_labels() -> Vec<String> {
@@ -57,6 +59,7 @@ impl Default for Config {
                     "computer".to_string(),
                 ],
                 disk_label_contains: default_disk_labels(),
+                show_other_sensors: false,
             },
             thresholds: ThresholdsConfig {
                 cold: 40.0,

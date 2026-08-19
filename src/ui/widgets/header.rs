@@ -11,26 +11,15 @@ use ratatui::{
 pub fn render(f: &mut Frame, area: Rect, stats: &SystemStats, config: &Config) {
     let title_color = parse_color(&config.style.header_color);
 
-    let sensors: Vec<_> = stats
-        .components
+    let max_temp = stats
+        .temps
         .iter()
-        .filter(|c| {
-            config
-                .style
-                .sensor_label_contains
-                .iter()
-                .any(|s| c.label().to_lowercase().contains(s))
-        })
-        .collect();
-
-    let max_temp = sensors
-        .iter()
-        .map(|c| c.temperature().unwrap_or(0.0))
+        .map(|reading| reading.value)
         .fold(0.0, f32::max);
 
     let content = format!(
         "Sensors: {} | Max Temp: {:.1}°C | Refresh: {}ms",
-        sensors.len(),
+        stats.temps.len(),
         max_temp,
         config.general.refresh_rate_ms
     );

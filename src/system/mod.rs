@@ -15,6 +15,7 @@ pub mod reading;
 pub mod stat;
 #[cfg(unix)]
 pub mod sysfs;
+pub mod temp;
 pub mod volt;
 #[cfg(windows)]
 pub mod windows;
@@ -26,12 +27,14 @@ pub use gpu::GpuMonitor;
 pub use memory::MemoryMonitor;
 pub use reading::Reading;
 use sysinfo::{Components, System};
+pub use temp::TempMonitor;
 pub use volt::VoltMonitor;
 
 pub struct SystemStats {
     pub sys: System,
     pub components: Components,
     pub cores: Vec<Reading>,
+    pub temps: Vec<Reading>,
     pub memory: Vec<Reading>,
     pub disks: Vec<Reading>,
     pub fans: Vec<Reading>,
@@ -47,11 +50,13 @@ impl SystemStats {
         sys.refresh_all();
         let components = Components::new_with_refreshed_list();
         let cores = CpuMonitor::scan(&sys);
+        let temps = TempMonitor::scan(&components);
 
         Self {
             sys,
             components,
             cores,
+            temps,
             memory: MemoryMonitor::scan(),
             disks: DiskMonitor::scan(),
             fans: FanMonitor::scan(),
@@ -77,6 +82,7 @@ impl SystemStats {
     pub fn refresh(&mut self) {
         CpuMonitor::refresh(&mut self.sys);
         CpuMonitor::refresh_cores(&mut self.cores, &self.sys);
+        TempMonitor::refresh(&mut self.temps, &mut self.components);
         MemoryMonitor::refresh(&mut self.sys);
         MemoryMonitor::refresh_pools(&mut self.memory);
         DiskMonitor::refresh(&mut self.disks);
@@ -85,7 +91,6 @@ impl SystemStats {
         GpuMonitor::refresh(&mut self.gpus);
         GpuMonitor::refresh_sensors(&mut self.gpu_temps);
         GpuMonitor::refresh_sensors(&mut self.gpu_clocks);
-        self.components.refresh(true);
     }
 
     pub fn cpu_usage(&self) -> f32 {

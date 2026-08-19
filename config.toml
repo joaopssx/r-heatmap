@@ -7,6 +7,7 @@ border_color = "Cyan"
 header_color = "Yellow"
 sensor_label_contains = ["core", "tctl", "tccd", "cpu", "package", "die", "computer"]
 disk_label_contains = ["nvme", "drivetemp"]
+show_other_sensors = false
 
 [thresholds]
 cold = 40.0
