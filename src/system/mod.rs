@@ -12,6 +12,9 @@ pub mod hwmon;
 #[cfg(unix)]
 pub mod meminfo;
 pub mod memory;
+pub mod power;
+#[cfg(unix)]
+pub mod rapl;
 pub mod reading;
 #[cfg(unix)]
 pub mod stat;
@@ -27,6 +30,7 @@ pub use disk::DiskMonitor;
 pub use fan::FanMonitor;
 pub use gpu::GpuMonitor;
 pub use memory::MemoryMonitor;
+pub use power::PowerMonitor;
 pub use reading::Reading;
 use sysinfo::{Components, System};
 pub use temp::TempMonitor;
@@ -41,6 +45,7 @@ pub struct SystemStats {
     pub disks: Vec<Reading>,
     pub fans: Vec<Reading>,
     pub volts: Vec<Reading>,
+    pub power: Vec<Reading>,
     pub gpus: Vec<Reading>,
     pub gpu_temps: Vec<Reading>,
     pub gpu_clocks: Vec<Reading>,
@@ -63,6 +68,7 @@ impl SystemStats {
             disks: DiskMonitor::scan(),
             fans: FanMonitor::scan(),
             volts: VoltMonitor::scan(),
+            power: PowerMonitor::scan(),
             gpus: if gpu_enabled {
                 GpuMonitor::scan()
             } else {
@@ -90,6 +96,7 @@ impl SystemStats {
         DiskMonitor::refresh(&mut self.disks);
         FanMonitor::refresh(&mut self.fans);
         VoltMonitor::refresh(&mut self.volts);
+        PowerMonitor::refresh(&mut self.power);
         GpuMonitor::refresh(&mut self.gpus);
         GpuMonitor::refresh_sensors(&mut self.gpu_temps);
         GpuMonitor::refresh_sensors(&mut self.gpu_clocks);

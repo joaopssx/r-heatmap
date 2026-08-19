@@ -31,9 +31,9 @@ pub fn get_fan_color(rpm: f32, max: Option<f32>) -> Color {
     }
 }
 
-pub fn get_clock_color(mhz: f32, max: Option<f32>) -> Color {
+pub fn get_ratio_color(value: f32, max: Option<f32>) -> Color {
     match max {
-        Some(max) if max > 0.0 => get_usage_color(mhz / max * 100.0),
+        Some(max) if max > 0.0 => get_usage_color(value / max * 100.0),
         _ => Color::Blue,
     }
 }

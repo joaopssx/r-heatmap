@@ -11,6 +11,7 @@ System thermal and load monitoring utility for Linux and Windows terminals.
   and everything else.
 - Fan speeds in RPM.
 - Voltage rails, when the chip exposes them.
+- CPU power draw in watts, from the RAPL energy counters.
 - Usage of every GPU that reports it, one tile per card.
 - GPU temperature and clocks on AMD cards, straight from the `amdgpu` driver.
 - Per core usage, measured from `/proc/stat` between refreshes, with the current clock of
@@ -96,6 +97,17 @@ A kernel with `hwmon` and `sysfs` support, which is everything but an embedded b
 AMD GPUs need nothing installed: `amdgpu` publishes usage, temperature and clocks in
 `sysfs`, and all three are read from there. Intel and NVIDIA cards publish none of it
 through the open driver, so their rows stay hidden.
+
+The power row needs the RAPL energy counters, which most kernels keep root only since
+CVE-2020-8694 — the counter leaks enough timing to be a side channel. Without access the
+row is hidden and the log says so. To see it as a normal user:
+
+```bash
+sudo chmod o+r /sys/class/powercap/*/energy_uj
+```
+
+That lasts until reboot; a udev rule makes it stick. Running the whole program as root
+works too.
 
 NVMe drives report their temperature out of the box. SATA drives need the `drivetemp`
 module:

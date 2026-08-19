@@ -12,7 +12,7 @@ use crate::config::{Config, StyleConfig};
 use crate::system::Reading;
 use crate::system::SystemStats;
 use crate::ui::util::color::{
-    get_clock_color, get_fan_color, get_usage_color, get_volt_color, parse_color,
+    get_fan_color, get_ratio_color, get_usage_color, get_volt_color, parse_color,
 };
 use ratatui::{
     Frame,
@@ -51,6 +51,7 @@ pub fn render(f: &mut Frame, stats: &SystemStats, config: &Config) {
             Constraint::Length(row_height(temps.others.len())),
             Constraint::Length(row_height(stats.fans.len())),
             Constraint::Length(row_height(stats.volts.len())),
+            Constraint::Length(row_height(stats.power.len())),
             Constraint::Length(row_height(stats.gpus.len())),
             Constraint::Length(row_height(stats.gpu_temps.len())),
             Constraint::Length(row_height(stats.gpu_clocks.len())),
@@ -74,14 +75,17 @@ pub fn render(f: &mut Frame, stats: &SystemStats, config: &Config) {
     render_reading_grid(f, content_chunks[7], &stats.volts, 3, " V", |r| {
         get_volt_color(r.value, r.min, r.max)
     });
-    render_reading_grid(f, content_chunks[8], &stats.gpus, 0, "%", |r| {
+    render_reading_grid(f, content_chunks[8], &stats.power, 1, " W", |r| {
+        get_ratio_color(r.value, r.max)
+    });
+    render_reading_grid(f, content_chunks[9], &stats.gpus, 0, "%", |r| {
         get_usage_color(r.value)
     });
-    render_reading_grid(f, content_chunks[9], &stats.gpu_temps, 1, "°C", temp_color);
-    render_reading_grid(f, content_chunks[10], &stats.gpu_clocks, 0, " MHz", |r| {
-        get_clock_color(r.value, r.max)
+    render_reading_grid(f, content_chunks[10], &stats.gpu_temps, 1, "°C", temp_color);
+    render_reading_grid(f, content_chunks[11], &stats.gpu_clocks, 0, " MHz", |r| {
+        get_ratio_color(r.value, r.max)
     });
-    render_reading_grid(f, content_chunks[11], &stats.cores, 1, "%", |r| {
+    render_reading_grid(f, content_chunks[12], &stats.cores, 1, "%", |r| {
         get_usage_color(r.value)
     });
     footer::render(f, chunks[1], stats, config);

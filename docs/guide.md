@@ -162,6 +162,38 @@ there is no way to tell a healthy 12V rail from a sagging one without it. Deskto
 super-I/O chips expose a lot of rails, laptops usually expose only the battery. Linux
 only; see WINDOWS for why.
 
+## POWER
+
+RAPL counts energy, not power: `energy_uj` under `/sys/class/powercap/` only ever goes up,
+in microjoules. Watts come from the same shape of calculation the core row uses — subtract
+the previous reading, divide by the time between them — with one difference: `/proc/stat`
+compares jiffies against jiffies and needs no clock, while joules per second needs to know
+what a second was, so the snapshot carries an `Instant` with it.
+
+The counter wraps at `max_energy_range_uj` and starts over. A negative difference means it
+went around, and the range is added back rather than reporting a negative draw.
+
+Zones are read straight out of `/sys/class/powercap/`, which lists packages and their
+subzones side by side as symlinks: `intel-rapl:0` is a package, `intel-rapl:0:0` is a zone
+inside it. Labels follow that, `package-0` for the package and `package-0 core` for the
+zone under it, resolved through the symlink to find the parent. The same package usually
+shows up twice, once through the MSR interface and once through `intel-rapl-mmio`; zones
+are visited driver by driver and a name that was already taken is dropped, so the MSR
+reading is the one kept. Tiles are colored against `constraint_0_power_limit_uw`, the long
+term limit the firmware set, which is what makes a package sitting at its limit read as
+red.
+
+Energy counters are readable only by root on most kernels, a mitigation for CVE-2020-8694
+where RAPL timings leaked AES keys. When that is the case the zones are skipped, the row
+stays hidden, and a single warning at startup says how to open them up. It is worth
+knowing that this is a real tradeoff and not an oversight: opening the counters to every
+local user is what the mitigation exists to prevent.
+
+The `psys` zone, when the firmware exposes one, measures the whole platform rather than the
+package, so it reads higher than the CPU zones and is not their sum.
+
+Linux only. Windows has no equivalent a program can read without a driver.
+
 ## GPUS
 
 Every `cardN` under `/sys/class/drm/` that exposes `device/gpu_busy_percent` gets its own
@@ -244,14 +276,14 @@ rather than a warning about a path that was never going to exist.
   each, with a `scan_platform`/`refresh_platform` pair per system, and `memory` and `cpu`
   are two more on top of the usage figures they already fed the status bar, and `temp`
   discovers every temperature channel on the machine in one pass. Under them,
-  `hwmon`, `drm`, `meminfo` and `stat` read `/proc` and `/sys`, and `windows::storage`, `windows::perf` and
+  `hwmon`, `drm`, `meminfo`, `stat`, `cpufreq` and `rapl` read `/proc` and `/sys`, and `windows::storage`, `windows::perf` and
   `windows::adapters` do
   the equivalent through Win32. Adding a channel type is still a matter of scanning a new
   prefix. `hwmon::scan_chip` takes a single chip directory, so a chip that lives outside
   `/sys/class/hwmon` — an AMD card's, for instance — goes through the same code.
 - **UI**: Terminal interface built with `ratatui`. Rows are laid out top to bottom
-  (header, memory, CPU temperatures, chipset, disks, other sensors, fans, voltages, GPU
-  usage, GPU temperatures, GPU clocks, cores) — cores last because the row grows with the
+  (header, memory, CPU temperatures, chipset, disks, other sensors, fans, voltages, power,
+  GPU usage, GPU temperatures, GPU clocks, cores) — cores last because the row grows with the
   core count and a row with no readings
   is given zero height, and a row that has readings is given four lines per grid row it
   needs, so a machine with sixteen core sensors gets a taller row instead of tiles too
