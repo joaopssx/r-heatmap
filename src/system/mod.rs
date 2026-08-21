@@ -1,4 +1,5 @@
 // Core system monitoring logic - by joaopssx
+pub mod battery;
 pub mod cpu;
 #[cfg(unix)]
 pub mod cpufreq;
@@ -14,6 +15,8 @@ pub mod meminfo;
 pub mod memory;
 pub mod power;
 #[cfg(unix)]
+pub mod power_supply;
+#[cfg(unix)]
 pub mod rapl;
 pub mod reading;
 #[cfg(unix)]
@@ -25,6 +28,7 @@ pub mod volt;
 #[cfg(windows)]
 pub mod windows;
 
+pub use battery::BatteryMonitor;
 pub use cpu::CpuMonitor;
 pub use disk::DiskMonitor;
 pub use fan::FanMonitor;
@@ -46,6 +50,7 @@ pub struct SystemStats {
     pub fans: Vec<Reading>,
     pub volts: Vec<Reading>,
     pub power: Vec<Reading>,
+    pub battery: Vec<Reading>,
     pub gpus: Vec<Reading>,
     pub gpu_temps: Vec<Reading>,
     pub gpu_clocks: Vec<Reading>,
@@ -69,6 +74,7 @@ impl SystemStats {
             fans: FanMonitor::scan(),
             volts: VoltMonitor::scan(),
             power: PowerMonitor::scan(),
+            battery: BatteryMonitor::scan(),
             gpus: if gpu_enabled {
                 GpuMonitor::scan()
             } else {
@@ -97,6 +103,7 @@ impl SystemStats {
         FanMonitor::refresh(&mut self.fans);
         VoltMonitor::refresh(&mut self.volts);
         PowerMonitor::refresh(&mut self.power);
+        BatteryMonitor::refresh(&mut self.battery);
         GpuMonitor::refresh(&mut self.gpus);
         GpuMonitor::refresh_sensors(&mut self.gpu_temps);
         GpuMonitor::refresh_sensors(&mut self.gpu_clocks);

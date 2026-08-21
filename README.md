@@ -12,14 +12,15 @@ System thermal and load monitoring utility for Linux and Windows terminals.
 - Fan speeds in RPM.
 - Voltage rails, when the chip exposes them.
 - CPU power draw in watts, from the RAPL energy counters.
+- Battery charge, what it is doing and how many watts it is moving, on laptops.
 - Usage of every GPU that reports it, one tile per card.
 - GPU temperature and clocks on AMD cards, straight from the `amdgpu` driver.
 - Per core usage, measured from `/proc/stat` between refreshes, with the current clock of
   that core next to it, plus a status bar with global CPU and RAM usage.
 
 Rows with nothing to report are hidden instead of showing empty tiles, so a laptop
-without voltage sensors simply does not get a voltage row. Which rows you get depends on
-the system: see [Requirements](#requirements).
+without voltage sensors gets no voltage row and a desktop with no battery gets no battery
+one. Which rows you get depends on the system: see [Requirements](#requirements).
 
 ## Installation
 
@@ -74,9 +75,9 @@ critical = 90.0
 Nothing in there declares a sensor. Every `hwmon` chip is scanned at startup and the
 filters only decide which row a discovered sensor lands in: `disk_label_contains` picks
 the disk row, `board_label_contains` the chipset row, `sensor_label_contains` the CPU row,
-and whatever is left is hidden unless `show_other_sensors` is on. If no sensor matches `sensor_label_contains` the filter is
-ignored and everything found is shown, so an unknown chip name never leaves the screen
-empty.
+and whatever is left is hidden unless `show_other_sensors` is on. If no sensor matches
+`sensor_label_contains` the filter is ignored and everything found is shown, so an unknown
+chip name never leaves the screen empty.
 
 Fans and voltages have no filter list either: every channel the kernel exposes is shown.
 

@@ -194,6 +194,30 @@ package, so it reads higher than the CPU zones and is not their sum.
 
 Linux only. Windows has no equivalent a program can read without a driver.
 
+## BATTERY
+
+Everything under `/sys/class/power_supply/` whose `type` reads `Battery` gets a tile: the
+value is `capacity`, and the note beside it is `status` plus how many watts are moving,
+`Discharging 14.2 W`. Draw comes from `power_now` when the firmware publishes it and from
+`current_now` times `voltage_now` when it does not, which is the split between the two
+kinds of battery interface Linux exposes. A battery that is full and idle shows the status
+alone, since there is no rate worth printing.
+
+Tiles are colored by charge rather than by usage, so the scale runs the other way from
+every other row: green when there is plenty left, red under 15%. Mains entries are skipped
+by the `type` check, which is also what keeps the AC adapter from being drawn as an empty
+battery.
+
+Battery temperature is not part of this row. `temp` under the same directory, in tenths of
+a degree, joins the temperatures discovered from `hwmon` and is classified with them, so on
+a machine that publishes one it lands in the other sensors row and needs
+`show_other_sensors` to be visible.
+
+A desktop has no `power_supply` battery, `class_dir` returns nothing, and the row is
+simply absent — the same path a kernel without `hwmon` takes.
+
+Linux only.
+
 ## GPUS
 
 Every `cardN` under `/sys/class/drm/` that exposes `device/gpu_busy_percent` gets its own
@@ -269,22 +293,21 @@ rather than a warning about a path that was never going to exist.
 ## ARCHITECTURE
 
 - **System**: `reading` holds the primitive every row is built from: a label, a value, an
-  optional window, an optional note printed beside the value, and where it came from. A reading backed by a `sysfs` file rereads that
-  one file on refresh; one produced in a batch — anything on Windows — is refreshed by its
-  monitor handing back a fresh set that `reading::update` merges by label, which keeps
-  tiles from reordering under the cursor. `disk`, `fan`, `volt` and `gpu` are one monitor
-  each, with a `scan_platform`/`refresh_platform` pair per system, and `memory` and `cpu`
-  are two more on top of the usage figures they already fed the status bar, and `temp`
-  discovers every temperature channel on the machine in one pass. Under them,
-  `hwmon`, `drm`, `meminfo`, `stat`, `cpufreq` and `rapl` read `/proc` and `/sys`, and `windows::storage`, `windows::perf` and
-  `windows::adapters` do
-  the equivalent through Win32. Adding a channel type is still a matter of scanning a new
-  prefix. `hwmon::scan_chip` takes a single chip directory, so a chip that lives outside
-  `/sys/class/hwmon` — an AMD card's, for instance — goes through the same code.
+  optional window, an optional note printed beside the value, and where it came from. A
+  reading backed by a `sysfs` file rereads that one file on refresh; one produced in a
+  batch is refreshed by its monitor handing back a fresh set that `reading::update` merges
+  by label, which keeps tiles from reordering under the cursor. Every row is a monitor —
+  `cpu`, `temp`, `memory`, `disk`, `fan`, `volt`, `power`, `battery`, `gpu` — with a
+  `scan_platform`/`refresh_platform` pair choosing an implementation per system. Under
+  them sit the readers, one per kernel interface: `hwmon`, `drm`, `meminfo`, `stat`,
+  `cpufreq`, `rapl` and `power_supply` on Linux, `windows::storage`, `windows::perf` and
+  `windows::adapters` through Win32. Adding a channel type is still a matter of scanning a
+  new prefix, and `hwmon::scan_chip` takes a single chip directory, so a chip that lives
+  outside `/sys/class/hwmon` — an AMD card's, for instance — goes through the same code.
 - **UI**: Terminal interface built with `ratatui`. Rows are laid out top to bottom
   (header, memory, CPU temperatures, chipset, disks, other sensors, fans, voltages, power,
-  GPU usage, GPU temperatures, GPU clocks, cores) — cores last because the row grows with the
-  core count and a row with no readings
+  battery, GPU usage, GPU temperatures, GPU clocks, cores) — cores last because the row
+  grows with the core count and a row with no readings
   is given zero height, and a row that has readings is given four lines per grid row it
   needs, so a machine with sixteen core sensors gets a taller row instead of tiles too
   short to print their value. Every row shares one grid renderer, parameterized by

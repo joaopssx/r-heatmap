@@ -31,6 +31,18 @@ pub fn get_fan_color(rpm: f32, max: Option<f32>) -> Color {
     }
 }
 
+pub fn get_charge_color(percent: f32) -> Color {
+    if percent < 15.0 {
+        Color::Red
+    } else if percent < 30.0 {
+        Color::Rgb(255, 140, 0)
+    } else if percent < 50.0 {
+        Color::Yellow
+    } else {
+        Color::Green
+    }
+}
+
 pub fn get_ratio_color(value: f32, max: Option<f32>) -> Color {
     match max {
         Some(max) if max > 0.0 => get_usage_color(value / max * 100.0),

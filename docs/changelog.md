@@ -15,6 +15,9 @@ All notable changes to this project will be documented in this file.
   through `sysinfo`. The config no longer declares which sensors exist, it only sorts the
   discovered ones into the CPU, disk and other rows, and a `sensor_label_contains` that
   matches nothing is ignored rather than leaving the screen empty.
+- Battery row from `/sys/class/power_supply/`, one tile per battery, showing charge with
+  the status and the watts flowing next to it. Battery temperature joins the discovered
+  temperatures. Machines with no battery get no row.
 - Power row in watts, from the RAPL energy counters under `/sys/class/powercap/`, as the
   energy delta between two refreshes over the time between them. Counter wrap is handled
   through `max_energy_range_uj`, tiles are colored against the firmware's long term power

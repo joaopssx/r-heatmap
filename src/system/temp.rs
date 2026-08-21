@@ -1,6 +1,6 @@
-#[cfg(unix)]
-use crate::system::hwmon;
 use crate::system::reading::{self, Reading};
+#[cfg(unix)]
+use crate::system::{hwmon, power_supply};
 use sysinfo::Components;
 
 pub struct TempMonitor;
@@ -19,7 +19,10 @@ impl TempMonitor {
 
 #[cfg(unix)]
 fn scan_platform(_components: &Components) -> Vec<Reading> {
-    hwmon::scan("temp", 0.001)
+    let mut temps = hwmon::scan("temp", 0.001);
+    temps.extend(power_supply::temperatures());
+
+    temps
 }
 
 #[cfg(unix)]
