@@ -63,46 +63,58 @@ pub fn render(f: &mut Frame, stats: &SystemStats, config: &Config) {
     let temp_color = |r: &Reading| get_temp_level_color(r.value, config);
 
     header::render(f, content_chunks[0], stats, config);
-    render_reading_grid(f, content_chunks[1], &stats.memory, 1, "%", |r| {
+    render_reading_grid(f, content_chunks[1], &refs(&stats.memory), 1, "%", |r| {
         get_usage_color(r.value)
     });
     render_reading_grid(f, content_chunks[2], &temps.cpus, 1, "°C", temp_color);
     render_reading_grid(f, content_chunks[3], &temps.board, 1, "°C", temp_color);
     render_reading_grid(f, content_chunks[4], &temps.disks, 1, "°C", temp_color);
     render_reading_grid(f, content_chunks[5], &temps.others, 1, "°C", temp_color);
-    render_reading_grid(f, content_chunks[6], &stats.fans, 0, " RPM", |r| {
+    render_reading_grid(f, content_chunks[6], &refs(&stats.fans), 0, " RPM", |r| {
         get_fan_color(r.value, r.max)
     });
-    render_reading_grid(f, content_chunks[7], &stats.volts, 3, " V", |r| {
+    render_reading_grid(f, content_chunks[7], &refs(&stats.volts), 3, " V", |r| {
         get_volt_color(r.value, r.min, r.max)
     });
-    render_reading_grid(f, content_chunks[8], &stats.power, 1, " W", |r| {
+    render_reading_grid(f, content_chunks[8], &refs(&stats.power), 1, " W", |r| {
         get_ratio_color(r.value, r.max)
     });
-    render_reading_grid(f, content_chunks[9], &stats.battery, 0, "%", |r| {
+    render_reading_grid(f, content_chunks[9], &refs(&stats.battery), 0, "%", |r| {
         get_charge_color(r.value)
     });
-    render_reading_grid(f, content_chunks[10], &stats.gpus, 0, "%", |r| {
+    render_reading_grid(f, content_chunks[10], &refs(&stats.gpus), 0, "%", |r| {
         get_usage_color(r.value)
     });
-    render_reading_grid(f, content_chunks[11], &stats.gpu_temps, 1, "°C", temp_color);
-    render_reading_grid(f, content_chunks[12], &stats.gpu_clocks, 0, " MHz", |r| {
-        get_ratio_color(r.value, r.max)
-    });
-    render_reading_grid(f, content_chunks[13], &stats.cores, 1, "%", |r| {
+    render_reading_grid(
+        f,
+        content_chunks[11],
+        &refs(&stats.gpu_temps),
+        1,
+        "°C",
+        temp_color,
+    );
+    render_reading_grid(
+        f,
+        content_chunks[12],
+        &refs(&stats.gpu_clocks),
+        0,
+        " MHz",
+        |r| get_ratio_color(r.value, r.max),
+    );
+    render_reading_grid(f, content_chunks[13], &refs(&stats.cores), 1, "%", |r| {
         get_usage_color(r.value)
     });
     footer::render(f, chunks[1], stats, config);
 }
 
-struct Temps {
-    cpus: Vec<Reading>,
-    board: Vec<Reading>,
-    disks: Vec<Reading>,
-    others: Vec<Reading>,
+struct Temps<'a> {
+    cpus: Vec<&'a Reading>,
+    board: Vec<&'a Reading>,
+    disks: Vec<&'a Reading>,
+    others: Vec<&'a Reading>,
 }
 
-fn split_temps(temps: &[Reading], disks: &[Reading], style: &StyleConfig) -> Temps {
+fn split_temps<'a>(temps: &'a [Reading], disks: &'a [Reading], style: &StyleConfig) -> Temps<'a> {
     let mut split = Temps {
         cpus: Vec::new(),
         board: Vec::new(),
@@ -112,13 +124,13 @@ fn split_temps(temps: &[Reading], disks: &[Reading], style: &StyleConfig) -> Tem
 
     for reading in temps {
         if matches(reading, &style.disk_label_contains) {
-            split.disks.push(reading.clone());
+            split.disks.push(reading);
         } else if matches(reading, &style.board_label_contains) {
-            split.board.push(reading.clone());
+            split.board.push(reading);
         } else if matches(reading, &style.sensor_label_contains) {
-            split.cpus.push(reading.clone());
+            split.cpus.push(reading);
         } else {
-            split.others.push(reading.clone());
+            split.others.push(reading);
         }
     }
 
@@ -130,7 +142,7 @@ fn split_temps(temps: &[Reading], disks: &[Reading], style: &StyleConfig) -> Tem
         split.others.clear();
     }
 
-    split.disks.extend(disks.iter().cloned());
+    split.disks.extend(disks.iter());
 
     for row in [
         &mut split.cpus,
@@ -154,10 +166,14 @@ fn row_height(count: usize) -> u16 {
     grid::rows(count) as u16 * TILE_HEIGHT
 }
 
+fn refs(readings: &[Reading]) -> Vec<&Reading> {
+    readings.iter().collect()
+}
+
 fn render_reading_grid<F>(
     f: &mut Frame,
     area: Rect,
-    readings: &[Reading],
+    readings: &[&Reading],
     decimals: usize,
     unit: &str,
     color: F,
@@ -221,7 +237,8 @@ mod tests {
 
     #[test]
     fn keeps_the_chipset_out_of_the_cpu_row() {
-        let split = split_temps(&temps(), &[], &Config::default().style);
+        let temps = temps();
+        let split = split_temps(&temps, &[], &Config::default().style);
 
         assert_eq!(split.cpus.len(), 1);
         assert_eq!(split.cpus[0].label, "coretemp Package id 0");
@@ -232,12 +249,13 @@ mod tests {
 
     #[test]
     fn hides_the_leftovers_unless_they_are_asked_for() {
+        let temps = temps();
         let mut config = Config::default();
-        let split = split_temps(&temps(), &[], &config.style);
+        let split = split_temps(&temps, &[], &config.style);
         assert!(split.others.is_empty());
 
         config.style.show_other_sensors = true;
-        let split = split_temps(&temps(), &[], &config.style);
+        let split = split_temps(&temps, &[], &config.style);
 
         assert_eq!(split.others.len(), 1);
         assert_eq!(split.others[0].label, "iwlwifi_1 temp1");
@@ -245,10 +263,11 @@ mod tests {
 
     #[test]
     fn falls_back_to_everything_when_no_sensor_matches() {
+        let temps = temps();
         let mut config = Config::default();
         config.style.sensor_label_contains = vec!["tctl".to_string()];
 
-        let split = split_temps(&temps(), &[], &config.style);
+        let split = split_temps(&temps, &[], &config.style);
 
         assert_eq!(split.cpus.len(), 2);
         assert_eq!(split.board.len(), 2);

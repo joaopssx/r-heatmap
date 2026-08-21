@@ -1,52 +1,77 @@
 use crate::system::reading::Reading;
 use crate::system::sysfs;
 use std::cell::RefCell;
-use std::fs;
+use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 thread_local! {
-    static PREVIOUS: RefCell<Option<Snapshot>> = const { RefCell::new(None) };
+    static COUNTERS: RefCell<Option<Counters>> = const { RefCell::new(None) };
 }
 
-struct Snapshot {
+struct Counters {
     taken: Instant,
     zones: Vec<Zone>,
 }
 
 struct Zone {
     label: String,
+    file: File,
     energy: f64,
     range: f64,
     limit: Option<f32>,
 }
 
 pub fn power() -> Vec<Reading> {
-    PREVIOUS.with(|previous| {
-        let mut previous = previous.borrow_mut();
-        let current = read(previous.is_none());
+    COUNTERS.with(|counters| {
+        let mut counters = counters.borrow_mut();
 
-        let power = match previous.as_ref() {
-            Some(before) => watts(&current, before),
-            None => current
-                .zones
-                .iter()
-                .map(|zone| reading(zone, 0.0))
-                .collect(),
-        };
+        match counters.as_mut() {
+            Some(counters) => counters.sample(),
+            None => {
+                let discovered = discover();
+                let idle = discovered
+                    .zones
+                    .iter()
+                    .map(|zone| reading(zone, 0.0))
+                    .collect();
 
-        *previous = Some(current);
-        power
+                *counters = Some(discovered);
+                idle
+            }
+        }
     })
 }
 
-fn read(first: bool) -> Snapshot {
+impl Counters {
+    fn sample(&mut self) -> Vec<Reading> {
+        let taken = Instant::now();
+        let seconds = taken.duration_since(self.taken).as_secs_f64();
+        self.taken = taken;
+
+        self.zones
+            .iter_mut()
+            .map(|zone| {
+                let Some(energy) = energy(&mut zone.file) else {
+                    return reading(zone, 0.0);
+                };
+
+                let value = draw(energy, zone.energy, zone.range, seconds);
+                zone.energy = energy;
+
+                reading(zone, value)
+            })
+            .collect()
+    }
+}
+
+fn discover() -> Counters {
     let zones = match sysfs::class_dir("powercap") {
-        Some(root) => zones(&root, first),
+        Some(root) => zones(&root, true),
         None => Vec::new(),
     };
 
-    Snapshot {
+    Counters {
         taken: Instant::now(),
         zones,
     }
@@ -71,7 +96,12 @@ fn zones(root: &Path, first: bool) -> Vec<Zone> {
             continue;
         }
 
-        let Some(energy) = number(&input) else {
+        let Ok(mut file) = File::open(&input) else {
+            locked += 1;
+            continue;
+        };
+
+        let Some(energy) = energy(&mut file) else {
             locked += 1;
             continue;
         };
@@ -86,6 +116,7 @@ fn zones(root: &Path, first: bool) -> Vec<Zone> {
 
         zones.push(Zone {
             label,
+            file,
             energy,
             range: number(&dir.join("max_energy_range_uj")).unwrap_or(f64::MAX),
             limit: limit(&dir),
@@ -132,36 +163,22 @@ fn limit(dir: &Path) -> Option<f32> {
     (watts > 0.0).then_some(watts as f32)
 }
 
+fn energy(file: &mut File) -> Option<f64> {
+    sysfs::reread_text(file)?.parse().ok()
+}
+
 fn number(path: &Path) -> Option<f64> {
     sysfs::read_text(path)?.parse().ok()
 }
 
-fn watts(current: &Snapshot, before: &Snapshot) -> Vec<Reading> {
-    let seconds = current.taken.duration_since(before.taken).as_secs_f64();
-
-    current
-        .zones
-        .iter()
-        .map(|zone| {
-            let value = before
-                .zones
-                .iter()
-                .find(|old| old.label == zone.label)
-                .map_or(0.0, |old| draw(zone, old, seconds));
-
-            reading(zone, value)
-        })
-        .collect()
-}
-
-fn draw(zone: &Zone, before: &Zone, seconds: f64) -> f32 {
+fn draw(energy: f64, before: f64, range: f64, seconds: f64) -> f32 {
     if seconds <= 0.0 {
         return 0.0;
     }
 
-    let mut used = zone.energy - before.energy;
+    let mut used = energy - before;
     if used < 0.0 {
-        used += zone.range;
+        used += range;
     }
 
     (used / 1_000_000.0 / seconds) as f32
@@ -177,19 +194,35 @@ fn reading(zone: &Zone, value: f32) -> Reading {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::time::Duration;
 
-    fn zone(label: &str, energy: f64) -> Zone {
-        Zone {
-            label: label.to_string(),
-            energy,
-            range: 262_143_328_850.0,
-            limit: Some(30.0),
-        }
+    #[test]
+    fn names_subzones_after_the_package_and_drops_the_second_reading_of_it() {
+        let root = fake_powercap();
+
+        let zones = zones(&root, false);
+        fs::remove_dir_all(&root).unwrap();
+
+        assert_eq!(zones.len(), 2);
+        assert_eq!(zones[0].label, "package-0");
+        assert_eq!(zones[0].limit, Some(30.0));
+        assert_eq!(zones[1].label, "package-0 core");
     }
 
-    fn snapshot(zones: Vec<Zone>, taken: Instant) -> Snapshot {
-        Snapshot { taken, zones }
+    #[test]
+    fn turns_joules_into_watts() {
+        assert_eq!(draw(8_500_000.0, 1_000_000.0, 262_143_328_850.0, 0.5), 15.0);
+    }
+
+    #[test]
+    fn survives_the_counter_wrapping_around() {
+        let range = 262_143_328_850.0;
+
+        assert_eq!(draw(4_000_000.0, range - 1_000_000.0, range, 1.0), 5.0);
+    }
+
+    #[test]
+    fn reports_nothing_before_any_time_has_passed() {
+        assert_eq!(draw(8_500_000.0, 1_000_000.0, 262_143_328_850.0, 0.0), 0.0);
     }
 
     fn fake_powercap() -> PathBuf {
@@ -221,63 +254,5 @@ mod tests {
         }
 
         root
-    }
-
-    #[test]
-    fn names_subzones_after_the_package_and_drops_the_second_reading_of_it() {
-        let root = fake_powercap();
-
-        let zones = zones(&root, false);
-        fs::remove_dir_all(&root).unwrap();
-
-        assert_eq!(zones.len(), 2);
-        assert_eq!(zones[0].label, "package-0");
-        assert_eq!(zones[0].limit, Some(30.0));
-        assert_eq!(zones[1].label, "package-0 core");
-    }
-
-    #[test]
-    fn turns_joules_into_watts() {
-        let start = Instant::now();
-        let before = snapshot(vec![zone("package-0", 1_000_000.0)], start);
-        let current = snapshot(
-            vec![zone("package-0", 8_500_000.0)],
-            start + Duration::from_millis(500),
-        );
-
-        let power = watts(&current, &before);
-
-        assert_eq!(power[0].label, "package-0");
-        assert_eq!(power[0].value, 15.0);
-        assert_eq!(power[0].max, Some(30.0));
-    }
-
-    #[test]
-    fn survives_the_counter_wrapping_around() {
-        let start = Instant::now();
-        let before = snapshot(
-            vec![zone("package-0", 262_143_328_850.0 - 1_000_000.0)],
-            start,
-        );
-        let current = snapshot(
-            vec![zone("package-0", 4_000_000.0)],
-            start + Duration::from_secs(1),
-        );
-
-        let power = watts(&current, &before);
-
-        assert_eq!(power[0].value, 5.0);
-    }
-
-    #[test]
-    fn reports_nothing_for_a_zone_that_just_appeared() {
-        let start = Instant::now();
-        let before = snapshot(Vec::new(), start);
-        let current = snapshot(
-            vec![zone("package-0", 4_000_000.0)],
-            start + Duration::from_secs(1),
-        );
-
-        assert_eq!(watts(&current, &before)[0].value, 0.0);
     }
 }

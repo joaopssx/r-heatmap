@@ -81,6 +81,14 @@ chip name never leaves the screen empty.
 
 Fans and voltages have no filter list either: every channel the kernel exposes is shown.
 
+## Cost
+
+Sensor files are opened once and re-read in place, and each reading times itself: anything
+that takes more than a millisecond to read — an NVMe drive, a laptop's SMM interface —
+drops to one read every two seconds, while cheap sensors like `coretemp` keep updating at
+the refresh rate. A full refresh costs about 0.9 ms here, down from 29 ms when everything
+was read on every tick.
+
 ## Logging
 
 Everything goes to `r-heatmap.log` in the current directory, never to the terminal —

@@ -57,6 +57,16 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- Sensor files are opened once and re-read with a seek instead of being opened and closed
+  every tick, and a reading that costs more than a millisecond to take is refreshed at
+  most every two seconds. On this laptop `nvme` and `dell_smm` reads cost 3 ms and 3.9 ms
+  against 0.02 ms for `coretemp`, and a full refresh went from 29 ms to 0.9 ms.
+- powercap zones are discovered once, with their handles, limits and ranges kept, instead
+  of walking `/sys/class/powercap` and canonicalizing every symlink on every tick. RAPL
+  still samples every tick, since its watts are a delta over that interval.
+- `cpufreq` keeps one open handle per core.
+- The battery is read every five seconds rather than every tick.
+- Rows are rendered from references instead of cloning every reading each frame.
 - `-c/--config` is honored. It was parsed and ignored.
 - `--no-gpu` is honored. It was parsed and ignored.
 - Logs go to `r-heatmap.log` only. Writing to stdout corrupted the alternate screen.

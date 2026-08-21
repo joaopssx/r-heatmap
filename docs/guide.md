@@ -294,7 +294,8 @@ rather than a warning about a path that was never going to exist.
 
 - **System**: `reading` holds the primitive every row is built from: a label, a value, an
   optional window, an optional note printed beside the value, and where it came from. A
-  reading backed by a `sysfs` file rereads that one file on refresh; one produced in a
+  reading backed by a `sysfs` file keeps that file open and seeks back to zero on refresh,
+  skipping the read entirely when the sensor has proved expensive — see COST; one produced in a
   batch is refreshed by its monitor handing back a fresh set that `reading::update` merges
   by label, which keeps tiles from reordering under the cursor. Every row is a monitor —
   `cpu`, `temp`, `memory`, `disk`, `fan`, `volt`, `power`, `battery`, `gpu` — with a
@@ -316,6 +317,32 @@ rather than a warning about a path that was never going to exist.
   others too short to print their value.
 - **Events**: Crossterm-based event loop. Input is polled with whatever is left of the
   current tick, so keys respond immediately regardless of `refresh_rate_ms`.
+
+## COST
+
+A monitor should not be a load on the machine it is watching, and sysfs reads are not all
+the same price. Measured on this laptop, per read: `coretemp` 0.02 ms, `iwlwifi` 0.13 ms,
+`dell_ddv` 0.67 ms, `nvme` 3.0 ms, `dell_smm` 3.9 ms. The spread is not the file layer, it
+is what the read costs behind it — an MSR for `coretemp`, an admin command to the drive
+controller for `nvme`, a trap into firmware for `dell_smm`. Reading all of them every tick
+cost 24 ms per refresh, most of it spent on two chips.
+
+So a file backed reading times its own read and, when one costs more than a millisecond,
+refreshes at most every two seconds instead of every tick. Nothing is configured and no
+sensor is special cased: the chips that are cheap keep updating at the refresh rate, the
+expensive ones fall back on their own. A whole refresh went from 29 ms to 0.9 ms here,
+and the CPU core temperatures — the numbers worth watching closely — still update every
+tick because they happen to be the cheapest to read.
+
+Handles are opened once at startup and re-read with a seek back to zero, rather than
+opened and closed every tick. The trees behind them are walked once too: the powercap
+zones, their limits and ranges are resolved at startup and only the energy counters are
+re-read, and `cpufreq` keeps one handle per core. RAPL is deliberately left out of the
+slow sensor rule, since watts are a delta over the interval between two reads and skipping
+one would just widen the window.
+
+Battery is on a five second interval of its own, because charge does not move faster than
+that and reading it means walking `power_supply` again for the status text.
 
 ## LOGGING
 
